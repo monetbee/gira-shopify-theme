@@ -33,6 +33,12 @@
         font-weight: 100 900;
         font-display: swap;
       }
+
+      /* Must follow gira-cart.css: Cart shares the global GIRA content width. */
+      .gira-cart-page__container { max-width: none; }
+      html, body { width: 100%; max-width: none; margin: 0; }
+      body.gira-theme { overflow-x: hidden; }
+      main, #MainContent { width: 100%; max-width: none; margin: 0; padding: 0; }
     </style>
 
     {% # Social, title, etc. %}

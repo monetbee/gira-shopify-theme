@@ -10,6 +10,10 @@
     {% render 'gira-story-content' %}
   {% when 'faq' %}
     {% render 'gira-faq-content' %}
+  {% when 'gira-club' %}
+    {% render 'gira-club-content' %}
+  {% when 'my-gira' %}
+    {% render 'gira-my-gira-content' %}
   {% else %}
     <h1>{{ page.title }}</h1>
     {{ page.content }}

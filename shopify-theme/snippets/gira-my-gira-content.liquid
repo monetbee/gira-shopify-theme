@@ -1,0 +1,26 @@
+{% if customer %}
+  {% assign sparks_balance = customer.metafields.gira_loyalty.balance.value | default: 0 %}
+  {% assign account_url_parts = routes.account_url | split: '?' %}
+  {% assign account_url_base = account_url_parts | first %}
+  {% assign account_url_query = account_url_parts | last %}
+  <main class="gira-my-gira-page">
+    <div class="gira-container gira-my-gira-container">
+      <p class="gira-my-gira-eyebrow">MY GIRA</p>
+      <h1>WELCOME{% if customer.first_name != blank %}, {{ customer.first_name | upcase }}{% endif %}.</h1>
+      <p class="gira-my-gira-intro">YOUR WORLD. YOUR SPARK.</p>
+      <section class="gira-my-gira-grid" aria-label="GIRA membership overview">
+        <article><p>SPARKS ⚡</p><strong>{{ sparks_balance }}</strong><span>AVAILABLE BALANCE</span></article>
+        <article><p>GIRA CLUB</p><strong>MEMBER</strong><span>FREE TO JOIN</span></article>
+      </section>
+      <section class="gira-my-gira-benefits"><p>GIRA CLUB</p><h2>YOUR MEMBERSHIP / BENEFITS</h2><ul><li>Purchase to earn SPARKS</li><li>Use SPARKS for future rewards</li><li>Keep your GIRA order history close</li></ul></section>
+      <nav class="gira-my-gira-links" aria-label="My GIRA links"><a href="{{ account_url_base }}{% if account_url_parts.size > 1 %}/orders?{{ account_url_query }}{% else %}/orders{% endif %}">ORDER HISTORY <span>→</span></a><a href="{{ routes.account_profile_url }}">PROFILE <span>→</span></a><a href="/pages/gira-club">CLUB BENEFITS <span>→</span></a></nav>
+      <section class="gira-my-gira-settings"><p>ACCOUNT SETTINGS</p><a href="{{ routes.account_profile_url }}">PROFILE <span>→</span></a><a href="{{ routes.account_logout_url }}">SIGN OUT <span>→</span></a></section>
+    </div>
+  </main>
+{% else %}
+  <main class="gira-my-gira-page">
+    <div class="gira-container gira-my-gira-container gira-my-gira-guest">
+      <p class="gira-my-gira-eyebrow">MY GIRA</p><h1>YOUR WORLD.<br>YOUR SPARK.</h1><p>ログインすると、GIRA CLUBの情報とSPARKSを確認できます。</p><a class="gira-my-gira-login" href="/customer_authentication/login?return_to=%2Fpages%2Fmy-gira">LOG IN / JOIN FREE</a><a class="gira-my-gira-benefits-link" href="/pages/gira-club">CLUB BENEFITS →</a>
+    </div>
+  </main>
+{% endif %}

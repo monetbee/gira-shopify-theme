@@ -13,6 +13,55 @@
     if (event.target.matches('[data-gira-sort]')) event.target.form.submit();
   });
 
+  const closeAccountMenu = () => {
+    document.querySelectorAll('[data-gira-account-menu]').forEach((menuRoot) => {
+      const toggle = menuRoot.querySelector('[data-gira-account-toggle]');
+      const popover = menuRoot.querySelector('[data-gira-account-popover]');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      if (popover) popover.hidden = true;
+    });
+  };
+  const setAccountMenuOpen = (menuRoot, isOpen) => {
+    const toggle = menuRoot?.querySelector('[data-gira-account-toggle]');
+    const popover = menuRoot?.querySelector('[data-gira-account-popover]');
+    if (!toggle || !popover) return;
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    popover.hidden = !isOpen;
+  };
+
+  document.querySelectorAll('[data-gira-account-menu]').forEach((menuRoot) => {
+    const toggle = menuRoot.querySelector('[data-gira-account-toggle]');
+    if (!toggle) return;
+    const desktopAccountMenu = window.matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)');
+
+    toggle.addEventListener('click', (event) => {
+      if (desktopAccountMenu.matches) {
+        const accountUrl = toggle.dataset.giraAccountUrl;
+        if (accountUrl) window.location.assign(accountUrl);
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+      closeAccountMenu();
+      setAccountMenuOpen(menuRoot, !isOpen);
+    });
+
+    if (desktopAccountMenu.matches) {
+      menuRoot.addEventListener('mouseenter', () => {
+        closeAccountMenu();
+        setAccountMenuOpen(menuRoot, true);
+      });
+      menuRoot.addEventListener('mouseleave', () => {
+        setAccountMenuOpen(menuRoot, false);
+      });
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-gira-account-menu]')) closeAccountMenu();
+  });
+
   document.querySelectorAll('[data-gira-product]').forEach((productRoot) => {
     const variantSelect = productRoot.querySelector('[data-gira-variant-select]');
     if (!variantSelect) return;
@@ -83,6 +132,7 @@
 
   const cartDrawerSelector = '[data-gira-cart-drawer]';
   const cartOpenClass = 'is-open';
+  let isCartUpdating = false;
   const setCartOpen = (isOpen) => {
     const drawer = document.querySelector(cartDrawerSelector);
     if (!drawer) return;
@@ -103,6 +153,19 @@
     const nextSection = documentFragment.querySelector(selector);
     const currentSection = document.querySelector(selector);
     if (nextSection && currentSection) currentSection.replaceWith(nextSection);
+  };
+  const setCartControlsDisabled = (disabled) => {
+    document.querySelectorAll('[data-gira-cart-change]').forEach((control) => {
+      control.disabled = disabled;
+      control.setAttribute('aria-busy', String(disabled));
+    });
+  };
+  const renderCartSections = (sections) => {
+    if (!sections) return;
+    replaceCartSection(sections['gira-cart-drawer'], cartDrawerSelector);
+    if (document.querySelector('[data-gira-cart-page]')) {
+      replaceCartSection(sections['gira-main-cart'], '[data-gira-cart-page]');
+    }
   };
   const refreshCart = async ({ openDrawer = false } = {}) => {
     const requests = [
@@ -133,7 +196,10 @@
     toggle.addEventListener('click', () => setCartOpen(true));
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') setCartOpen(false);
+    if (event.key === 'Escape') {
+      setCartOpen(false);
+      closeAccountMenu();
+    }
   });
   document.addEventListener('submit', async (event) => {
     const productForm = event.target.closest('.gira-product-form');
@@ -161,20 +227,37 @@
   document.addEventListener('click', async (event) => {
     const cartChange = event.target.closest('[data-gira-cart-change]');
     if (!cartChange) return;
+    event.preventDefault();
+    if (isCartUpdating) return;
     const quantity = Math.max(0, Number(cartChange.dataset.quantity));
     const lineKey = cartChange.dataset.lineKey;
     if (!lineKey || Number.isNaN(quantity)) return;
-    cartChange.disabled = true;
+    const wasDrawerOpen = document.querySelector(cartDrawerSelector)?.classList.contains(cartOpenClass);
+    isCartUpdating = true;
+    setCartControlsDisabled(true);
     try {
       const response = await fetch('/cart/change.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ id: lineKey, quantity }),
+        body: JSON.stringify({
+          id: lineKey,
+          quantity,
+          sections: ['gira-cart-drawer', 'gira-main-cart'],
+          sections_url: window.location.pathname,
+        }),
       });
-      if (!response.ok) throw new Error('Unable to update cart');
-      await refreshCart({ openDrawer: document.querySelector(cartDrawerSelector)?.classList.contains(cartOpenClass) });
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`Unable to update cart (${response.status}): ${detail}`);
+      }
+      const cart = await response.json();
+      renderCartSections(cart.sections);
+      updateCartCount(cart.item_count);
+      if (wasDrawerOpen) setCartOpen(true);
     } catch (error) {
-      cartChange.disabled = false;
+      setCartControlsDisabled(false);
+    } finally {
+      isCartUpdating = false;
     }
   });
 })();

@@ -20,7 +20,19 @@
 
     <div class="gira-header__actions">
       {% if section.settings.show_shop_button %}<a class="gira-header-cta" href="{{ section.settings.shop_link | default: routes.all_products_collection_url }}">{{ section.settings.shop_label }}</a>{% endif %}
-      <a class="gira-icon-button" href="{{ routes.account_url }}" aria-label="Account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-4 3.1-6 7.5-6s6.7 2 7.5 6"/></svg></a>
+      {% if customer %}
+        {% assign sparks_balance = customer.metafields.gira_loyalty.balance.value | default: 0 %}
+        {% assign account_url_parts = routes.account_url | split: '?' %}
+        {% assign account_url_base = account_url_parts | first %}
+        {% assign account_url_query = account_url_parts | last %}
+      <div class="gira-header-account-menu" data-gira-account-menu>
+        <a class="gira-header-sparks" href="/pages/my-gira" aria-label="{{ sparks_balance }} SPARKS">⚡ <strong>{{ sparks_balance }}</strong> SPARKS</a>
+        <button class="gira-icon-button gira-header-account" type="button" aria-label="Account" aria-expanded="false" aria-haspopup="menu" aria-controls="gira-account-menu-{{ section.id }}" data-gira-account-toggle data-gira-account-url="/pages/my-gira"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-4 3.1-6 7.5-6s6.7 2 7.5 6"/></svg></button>
+        <div id="gira-account-menu-{{ section.id }}" class="gira-header-account-popover" role="menu" hidden data-gira-account-popover><p>GIRA CLUB{% if customer.first_name != blank %} / {{ customer.first_name }}{% endif %}</p><a href="/pages/my-gira" role="menuitem">MY GIRA</a><a href="{{ account_url_base }}{% if account_url_parts.size > 1 %}/orders?{{ account_url_query }}{% else %}/orders{% endif %}" role="menuitem">ORDER HISTORY</a><a href="{{ routes.account_profile_url }}" role="menuitem">PROFILE</a><a href="/pages/gira-club" role="menuitem">CLUB BENEFITS</a><a href="{{ routes.account_logout_url }}" role="menuitem">SIGN OUT</a></div>
+      </div>
+      {% else %}
+        <a class="gira-header-login" href="/customer_authentication/login?return_to=%2Fpages%2Fmy-gira">LOG IN / JOIN FREE</a>
+      {% endif %}
       <button class="gira-icon-button gira-cart-button" type="button" aria-label="Open cart" aria-expanded="false" aria-controls="GiraCartDrawer" data-gira-cart-toggle><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l1.6 10.2a2 2 0 0 0 2 1.7h8.8a2 2 0 0 0 2-1.7L21 7H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span data-gira-cart-count{% if cart.item_count == 0 %} hidden{% endif %}>{{ cart.item_count }}</span></button>
     </div>
   </div>

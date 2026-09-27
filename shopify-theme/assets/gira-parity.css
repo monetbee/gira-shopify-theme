@@ -9,6 +9,49 @@
   line-height: 1.5;
 }
 
+/* Cart uses the same 80rem inner-width as SHOP; the 2-column grid stays in gira-cart.css. */
+.gira-cart-page__container { max-width: none; }
+
+.gira-header .gira-cart-button { border-color: #f5f1eb; background: #f5f1eb; color: #111; }
+.gira-header .gira-cart-button svg,
+.gira-header .gira-header-account svg { width: 1rem; height: 1rem; stroke-width: 1.7; }
+.gira-header .gira-cart-button [data-gira-cart-count] { display: grid; min-width: 1.125rem; height: 1.125rem; place-items: center; border: 1px solid #f5f1eb; background: #111; color: #fff; font-size: 0.56rem; font-weight: 700; line-height: 1; }
+
+.gira-header-account-menu { position: relative; z-index: 100; padding-bottom: 0.6rem; margin-bottom: -0.6rem; }
+.gira-header-account { background: transparent; cursor: pointer; font: inherit; }
+.gira-header-account:hover { background: rgba(255, 255, 255, 0.1); }
+.gira-header-account-popover { position: absolute; top: calc(100% - 0.6rem); right: 0; z-index: 101; min-width: 11.5rem; padding: 0.8rem; border: 1px solid rgba(255, 255, 255, 0.35); background: #0b0a10; box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.32); pointer-events: auto; }
+.gira-header-account-popover p,.gira-header-account-popover a { display: block; margin: 0; padding: 0.6rem 0.7rem; color: #fff; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-decoration: none; }
+.gira-header-account-popover p { color: #d9caff; }
+.gira-header-account-popover a:hover,.gira-header-account-popover a:focus-visible { background: #fff; color: #111; outline: none; }
+.gira-header-login,.gira-header-sparks { display:inline-flex; align-items:center; min-height:2.5rem; color:#f5f1eb; font-size:.62rem; font-weight:800; letter-spacing:.12em; text-decoration:none; white-space:nowrap; }
+.gira-header-login { padding:0 .95rem; border:1px solid rgba(245,241,235,.45); }
+.gira-header-login:hover { background:#f5f1eb; color:#111; }
+.gira-header-sparks { margin-right:.1rem; color:#d9caff; }
+
+.gira-club-page { min-height: 65vh; padding: 5.5rem 0 7rem; background: radial-gradient(circle at 82% 8%, rgba(116,73,255,.3), transparent 26rem), radial-gradient(circle at 12% 64%, rgba(96,51,148,.18), transparent 30rem), #09080d; color: #f7f2ec; }
+.gira-club-container { max-width: 72rem; }
+.gira-club-hero { max-width: 64rem; padding-bottom: clamp(3.5rem,8vw,6rem); }
+.gira-club-eyebrow,.gira-club-free,.gira-club-section-heading>p,.gira-club-sparks>p:first-child { margin: 0; color: #d9caff; font-size: .7rem; font-weight: 700; letter-spacing: .2em; line-height: 1.3; }
+.gira-club-free { margin-top: 1rem; color: rgba(247,242,236,.78); }
+.gira-club-page h1 { max-width: 62rem; margin: .65rem 0 0; color: #fff; font-size: clamp(3.25rem,9vw,7.6rem); font-weight: 800; letter-spacing: -.08em; line-height: .82; }
+.gira-club-hero>p:last-child { margin: 1.65rem 0 0; color: #fff; font-size: clamp(1rem,1.8vw,1.3rem); font-weight: 600; }
+.gira-club-gift { max-width: 42rem; margin-top: 2.5rem; padding: clamp(1.25rem,3vw,2rem); border: 1px solid rgba(217,202,255,.72); background: linear-gradient(120deg,rgba(111,73,255,.32),rgba(19,14,34,.72)); }
+.gira-club-gift>p:first-child { margin: 0; color: #e7ddff; font-size: .7rem; font-weight: 700; letter-spacing: .2em; }.gira-club-gift strong { display: block; margin-top: .6rem; color: #fff; font-size: clamp(2rem,6vw,4rem); letter-spacing: -.07em; line-height: .9; }.gira-club-gift>p:last-child { margin: 1.1rem 0 0; color: rgba(255,255,255,.94); font-size: .9rem; font-weight: 600; line-height: 1.65; }
+.gira-club-benefits { max-width: 58rem; padding: clamp(3.5rem,7vw,6rem) 0; }.gira-club-section-heading { display: flex; align-items: baseline; gap: 1.25rem; margin-bottom: 1.25rem; }.gira-club-section-heading h2 { margin: 0; color: #fff; font-size: clamp(1rem,2vw,1.35rem); font-weight: 700; letter-spacing: .12em; }
+.gira-club-benefits ul { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 0; padding: 0; list-style: none; border-block: 1px solid rgba(255,255,255,.28); }.gira-club-benefits li { min-height: 7.5rem; padding: 1.25rem; color: #fff; font-size: .95rem; font-weight: 600; line-height: 1.5; }.gira-club-benefits li+li { border-left: 1px solid rgba(255,255,255,.22); }
+.gira-club-sparks { max-width: 58rem; padding: clamp(2.5rem,6vw,5rem) 0; border-top: 1px solid rgba(255,255,255,.32); }.gira-club-sparks h2 { margin: .7rem 0 1.4rem; color: #fff; font-size: clamp(3rem,7vw,6rem); font-weight: 800; letter-spacing: -.08em; line-height: .85; }.gira-club-sparks>p:nth-of-type(2) { margin: 0; color: #fff; font-size: clamp(1.2rem,2.4vw,1.9rem); font-weight: 600; }.gira-club-sparks dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; margin: 2.5rem 0 0; }.gira-club-sparks dl div { padding-top: .65rem; border-top: 1px solid rgba(255,255,255,.28); }.gira-club-sparks dt { color: #fff; font-size: .82rem; font-weight: 700; letter-spacing: .14em; }.gira-club-sparks dd { margin: .45rem 0 0; color: rgba(247,242,236,.82); font-size: .76rem; font-weight: 700; letter-spacing: .12em; }
+.gira-club-join { display: inline-flex; align-items: center; justify-content: center; min-width: min(100%,16rem); min-height: 2.75rem; margin-top: clamp(3rem,6vw,5rem); padding: .7rem 1.25rem; border: 1px solid rgba(255,255,255,.72); color: #fff; font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-decoration: none; }.gira-club-join:hover { background: #fff; color: #111; }
+
+.gira-my-gira-page { min-height:65vh; padding:5.5rem 0 7rem; background:radial-gradient(circle at 86% 6%,rgba(116,73,255,.3),transparent 28rem),#09080d; color:#f7f2ec; }
+.gira-my-gira-container { max-width:72rem; }.gira-my-gira-eyebrow { margin:0; color:#d9caff; font-size:.7rem; font-weight:700; letter-spacing:.2em; }.gira-my-gira-page h1 { margin:.8rem 0 0; color:#fff; font-size:clamp(3.4rem,8vw,7.4rem); font-weight:800; letter-spacing:-.08em; line-height:.83; }.gira-my-gira-intro { margin:1.25rem 0 0; font-size:1rem; font-weight:700; letter-spacing:.12em; }.gira-my-gira-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:4rem; border:1px solid rgba(255,255,255,.3); }.gira-my-gira-grid article { display:flex; min-height:13rem; padding:1.5rem; flex-direction:column; }.gira-my-gira-grid article+article { border-left:1px solid rgba(255,255,255,.3); }.gira-my-gira-grid p,.gira-my-gira-benefits>p { margin:0; color:#d9caff; font-size:.7rem; font-weight:700; letter-spacing:.18em; }.gira-my-gira-grid strong { margin:auto 0 .4rem; color:#fff; font-size:clamp(3rem,7vw,6rem); font-weight:800; letter-spacing:-.08em; line-height:.8; }.gira-my-gira-grid span { font-size:.65rem; font-weight:700; letter-spacing:.14em; }.gira-my-gira-benefits { max-width:58rem; padding:5rem 0 3rem; }.gira-my-gira-benefits h2 { margin:.7rem 0 1.4rem; font-size:clamp(1.4rem,3vw,2.5rem); letter-spacing:-.05em; }.gira-my-gira-benefits ul { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; padding:0; list-style:none; border-block:1px solid rgba(255,255,255,.3); }.gira-my-gira-benefits li { min-height:7rem; padding:1.25rem; font-weight:600; }.gira-my-gira-benefits li+li { border-left:1px solid rgba(255,255,255,.3); }.gira-my-gira-links { display:grid; max-width:58rem; border-top:1px solid rgba(255,255,255,.3); }.gira-my-gira-links a { display:flex; align-items:center; justify-content:space-between; padding:1.25rem 0; border-bottom:1px solid rgba(255,255,255,.3); color:#fff; font-size:.75rem; font-weight:700; letter-spacing:.15em; text-decoration:none; }.gira-my-gira-links a:hover { color:#d9caff; }.gira-my-gira-guest { max-width:64rem; }.gira-my-gira-guest>p:not(.gira-my-gira-eyebrow) { max-width:34rem; margin:1.5rem 0 0; color:rgba(255,255,255,.9); font-size:1.1rem; font-weight:600; }.gira-my-gira-login { display:inline-flex; margin-top:2.5rem; padding:.9rem 1.4rem; background:#fff; color:#111; font-size:.7rem; font-weight:800; letter-spacing:.15em; text-decoration:none; }.gira-my-gira-benefits-link { display:block; width:max-content; margin-top:1.25rem; color:#d9caff; font-size:.7rem; font-weight:700; letter-spacing:.15em; text-decoration:none; }
+
+@media (max-width: 767px) { .gira-club-page { padding: 3.5rem 0 5rem; }.gira-club-benefits ul,.gira-club-sparks dl { grid-template-columns: 1fr; }.gira-club-benefits li+li { border-top: 1px solid rgba(255,255,255,.22); border-left: 0; } }
+@media (max-width:767px) { .gira-header-login { max-width:9.2rem; padding:0 .55rem; font-size:.54rem; letter-spacing:.08em; }.gira-header-sparks { display:inline-flex; gap:.22rem; padding:0 .45rem; font-size:.52rem; }.gira-header-sparks strong { font-size:.68rem; }.gira-my-gira-page { padding:3.5rem 0 5rem; }.gira-my-gira-grid,.gira-my-gira-benefits ul { grid-template-columns:1fr; }.gira-my-gira-grid article+article,.gira-my-gira-benefits li+li { border-top:1px solid rgba(255,255,255,.3); border-left:0; }.gira-my-gira-grid article { min-height:10rem; }.gira-my-gira-benefits { padding:3.5rem 0 2.5rem; } }
+
+.gira-header-sparks { gap:.32rem; padding:0 .68rem; border:1px solid rgba(217,202,255,.5); border-radius:999px; background:rgba(111,73,255,.16); color:#e8ddff; font-size:.68rem; letter-spacing:.08em; }.gira-header-sparks strong { color:#fff; font-size:.86rem; letter-spacing:0; }.gira-header-sparks:hover { border-color:#d9caff; background:#6f49ff; color:#fff; }.gira-header .gira-cart-button svg { width:1.22rem; height:1.22rem; stroke-width:2.25; transform:translate(-.03rem,.02rem); }
+.gira-my-gira-settings { display:grid; max-width:58rem; margin-top:5rem; border-top:1px solid rgba(255,255,255,.3); }.gira-my-gira-settings>p { margin:0; padding:1.1rem 0; color:#d9caff; font-size:.7rem; font-weight:700; letter-spacing:.18em; }.gira-my-gira-settings a { display:flex; align-items:center; justify-content:space-between; padding:1.25rem 0; border-top:1px solid rgba(255,255,255,.3); color:#fff; font-size:.75rem; font-weight:700; letter-spacing:.15em; text-decoration:none; }.gira-my-gira-settings a:hover { color:#d9caff; }
+
 .gira-container {
   width: min(100% - 2rem, 80rem);
 }
@@ -94,7 +137,9 @@
   .gira-product-detail-page,
   .gira-cart-page,
   .gira-story-page,
-  .gira-faq-page
+  .gira-faq-page,
+  .gira-club-page,
+  .gira-my-gira-page
 ) {
   grid-column: 1 / -1;
   width: 100%;
