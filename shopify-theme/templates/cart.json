@@ -10,7 +10,7 @@
 {
   "sections": {
     "main": {
-      "type": "cart",
+      "type": "gira-main-cart",
       "settings": {}
     }
   },

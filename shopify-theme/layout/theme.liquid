@@ -23,6 +23,7 @@
     {{ 'gira-collection.css' | asset_url | stylesheet_tag }}
     {{ 'gira-parity.css' | asset_url | stylesheet_tag }}
     {{ 'gira-product.css' | asset_url | stylesheet_tag }}
+    {{ 'gira-cart.css' | asset_url | stylesheet_tag }}
 
     <style>
       @font-face {
@@ -46,6 +47,8 @@
     {{ content_for_layout }}
 
     {% sections 'footer-group' %}
+
+    {% render 'gira-cart-drawer' %}
 
     <script src="{{ 'gira.js' | asset_url }}" defer="defer"></script>
   </body>

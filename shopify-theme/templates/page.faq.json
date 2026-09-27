@@ -1,0 +1,4 @@
+{
+  "sections": {"main": {"type": "gira-faq", "settings": {}}},
+  "order": ["main"]
+}

@@ -80,4 +80,101 @@
     productRoot.querySelector('[data-gira-gallery-next]')?.addEventListener('click', () => shiftMedia(1));
     updateVariant();
   });
+
+  const cartDrawerSelector = '[data-gira-cart-drawer]';
+  const cartOpenClass = 'is-open';
+  const setCartOpen = (isOpen) => {
+    const drawer = document.querySelector(cartDrawerSelector);
+    if (!drawer) return;
+    drawer.classList.toggle(cartOpenClass, isOpen);
+    drawer.setAttribute('aria-hidden', String(!isOpen));
+    document.documentElement.classList.toggle('gira-cart-open', isOpen);
+    document.querySelectorAll('[data-gira-cart-toggle]').forEach((toggle) => toggle.setAttribute('aria-expanded', String(isOpen)));
+  };
+  const updateCartCount = (count) => {
+    document.querySelectorAll('[data-gira-cart-count]').forEach((bubble) => {
+      bubble.textContent = String(count);
+      bubble.hidden = count === 0;
+    });
+  };
+  const replaceCartSection = (html, selector) => {
+    if (!html) return;
+    const documentFragment = new DOMParser().parseFromString(html, 'text/html');
+    const nextSection = documentFragment.querySelector(selector);
+    const currentSection = document.querySelector(selector);
+    if (nextSection && currentSection) currentSection.replaceWith(nextSection);
+  };
+  const refreshCart = async ({ openDrawer = false } = {}) => {
+    const requests = [
+      fetch('/cart.js', { headers: { Accept: 'application/json' } }),
+      fetch('/?section_id=gira-cart-drawer'),
+    ];
+    if (document.querySelector('[data-gira-cart-page]')) requests.push(fetch('/cart?section_id=gira-main-cart'));
+    const responses = await Promise.all(requests);
+    const [cartResponse, drawerResponse, pageResponse] = responses;
+    if (!cartResponse.ok || !drawerResponse.ok || (pageResponse && !pageResponse.ok)) throw new Error('Unable to refresh cart');
+    const cart = await cartResponse.json();
+    replaceCartSection(await drawerResponse.text(), cartDrawerSelector);
+    if (pageResponse) replaceCartSection(await pageResponse.text(), '[data-gira-cart-page]');
+    updateCartCount(cart.item_count);
+    if (openDrawer) setCartOpen(true);
+  };
+
+  document.addEventListener('click', (event) => {
+    const cartToggle = event.target.closest('[data-gira-cart-toggle]');
+    if (cartToggle) {
+      setCartOpen(true);
+      return;
+    }
+    const cartClose = event.target.closest('[data-gira-cart-close]');
+    if (cartClose) setCartOpen(false);
+  });
+  document.querySelectorAll('[data-gira-cart-toggle]').forEach((toggle) => {
+    toggle.addEventListener('click', () => setCartOpen(true));
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setCartOpen(false);
+  });
+  document.addEventListener('submit', async (event) => {
+    const productForm = event.target.closest('.gira-product-form');
+    if (!productForm) return;
+    event.preventDefault();
+    const submit = productForm.querySelector('[data-gira-add-to-cart]');
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = 'ADDING…';
+    }
+    try {
+      const response = await fetch(productForm.action, { method: 'POST', body: new FormData(productForm), headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('Unable to add item');
+      await refreshCart({ openDrawer: true });
+    } catch (error) {
+      const errorContainer = productForm.querySelector('.gira-product-form-errors');
+      if (errorContainer) errorContainer.textContent = 'Unable to add this item. Please try again.';
+    } finally {
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = 'ADD TO CART';
+      }
+    }
+  });
+  document.addEventListener('click', async (event) => {
+    const cartChange = event.target.closest('[data-gira-cart-change]');
+    if (!cartChange) return;
+    const quantity = Math.max(0, Number(cartChange.dataset.quantity));
+    const lineKey = cartChange.dataset.lineKey;
+    if (!lineKey || Number.isNaN(quantity)) return;
+    cartChange.disabled = true;
+    try {
+      const response = await fetch('/cart/change.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ id: lineKey, quantity }),
+      });
+      if (!response.ok) throw new Error('Unable to update cart');
+      await refreshCart({ openDrawer: document.querySelector(cartDrawerSelector)?.classList.contains(cartOpenClass) });
+    } catch (error) {
+      cartChange.disabled = false;
+    }
+  });
 })();

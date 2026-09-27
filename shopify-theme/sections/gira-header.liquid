@@ -21,7 +21,7 @@
     <div class="gira-header__actions">
       {% if section.settings.show_shop_button %}<a class="gira-header-cta" href="{{ section.settings.shop_link | default: routes.all_products_collection_url }}">{{ section.settings.shop_label }}</a>{% endif %}
       <a class="gira-icon-button" href="{{ routes.account_url }}" aria-label="Account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-4 3.1-6 7.5-6s6.7 2 7.5 6"/></svg></a>
-      <a class="gira-icon-button gira-cart-button" href="{{ routes.cart_url }}" aria-label="Cart"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l1.6 10.2a2 2 0 0 0 2 1.7h8.8a2 2 0 0 0 2-1.7L21 7H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>{{ cart.item_count }}</span></a>
+      <button class="gira-icon-button gira-cart-button" type="button" aria-label="Open cart" aria-expanded="false" aria-controls="GiraCartDrawer" data-gira-cart-toggle><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l1.6 10.2a2 2 0 0 0 2 1.7h8.8a2 2 0 0 0 2-1.7L21 7H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span data-gira-cart-count{% if cart.item_count == 0 %} hidden{% endif %}>{{ cart.item_count }}</span></button>
     </div>
   </div>
 
