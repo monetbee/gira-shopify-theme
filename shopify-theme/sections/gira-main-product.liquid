@@ -1,0 +1,74 @@
+{% liquid
+  assign current_variant = product.selected_or_first_available_variant
+  assign current_media = current_variant.featured_media | default: product.featured_media
+%}
+
+<main class="gira-product-detail-page" data-gira-product>
+  <div class="gira-container gira-product-detail-container">
+    <a class="gira-product-back-link" href="{{ routes.all_products_collection_url }}">← SHOP</a>
+    <div class="gira-product-detail-shell">
+      <section class="gira-product-detail-gallery" aria-label="{{ product.title | escape }} image gallery">
+        <div class="gira-product-detail-gallery-main">
+          {% if product.media.size > 0 %}
+            {% for media in product.media %}
+              <div class="gira-product-detail-media" data-gira-product-media data-media-id="{{ media.id }}"{% if current_media != blank and media.id != current_media.id %} hidden{% endif %}>
+                {% case media.media_type %}
+                  {% when 'image' %}
+                    {{ media.preview_image | image_url: width: 1800 | image_tag: loading: 'eager', widths: '480, 720, 960, 1440, 1800', class: 'gira-product-detail-image', alt: media.alt | default: product.title }}
+                  {% else %}
+                    {{ media | media_tag: image_size: '1800x', controls: true, class: 'gira-product-detail-image' }}
+                {% endcase %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="gira-product-detail-media"><div class="gira-product-detail-image gira-product-detail-fallback">NO IMAGE</div></div>
+          {% endif %}
+          {% if product.media.size > 1 %}<div class="gira-product-detail-gallery-nav" aria-label="Image navigation"><button type="button" class="gira-product-detail-nav-button" data-gira-gallery-previous aria-label="Previous image">←</button><button type="button" class="gira-product-detail-nav-button" data-gira-gallery-next aria-label="Next image">→</button></div>{% endif %}
+        </div>
+        {% if product.media.size > 1 %}
+          <div class="gira-product-detail-gallery-thumbs" aria-label="Product thumbnail gallery">
+            {% for media in product.media %}
+              <button class="gira-product-detail-thumb{% if current_media != blank and media.id == current_media.id %} is-active{% endif %}" type="button" data-gira-product-thumb data-media-id="{{ media.id }}" aria-label="View image {{ forloop.index }}" aria-pressed="{% if current_media != blank and media.id == current_media.id %}true{% else %}false{% endif %}">
+                <span class="gira-product-detail-thumb-inner">{{ media.preview_image | image_url: width: 240 | image_tag: loading: 'lazy', widths: '120, 180, 240', class: 'gira-product-detail-thumb-image', alt: media.alt | default: product.title }}</span>
+              </button>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="gira-product-detail-panel">
+        <p class="gira-product-detail-brand">{{ product.vendor | default: 'GIRA' }}</p>
+        <h1>{{ product.title }}</h1>
+        <div class="gira-product-detail-price-row"><p data-gira-product-price>{{ current_variant.price | money }}</p><span data-gira-product-compare{% unless current_variant.compare_at_price > current_variant.price %} hidden{% endunless %}>{% if current_variant.compare_at_price > current_variant.price %}{{ current_variant.compare_at_price | money }}{% endif %}</span></div>
+        {% if product.tags.size > 0 %}<section class="gira-product-detail-tags" aria-label="Tags"><p>TAGS</p><div class="gira-product-tags">{% for tag in product.tags %}<span>#{{ tag }}</span>{% endfor %}</div></section>{% endif %}
+
+        {% form 'product', product, class: 'gira-product-form' %}
+          <div class="gira-product-detail-meta">
+            {% if product.variants.size > 1 %}
+              <fieldset class="gira-product-color-selector"><legend>{% if product.options_with_values.size == 1 %}{{ product.options_with_values.first.name | upcase }}{% else %}VARIANT{% endif %}</legend><div>
+                {% for variant in product.variants %}<button type="button" data-gira-variant-button data-gira-variant-id="{{ variant.id }}" class="{% if variant.id == current_variant.id %}is-selected{% endif %}" aria-pressed="{% if variant.id == current_variant.id %}true{% else %}false{% endif %}">{{ variant.title }}</button>{% endfor %}
+              </div></fieldset>
+            {% endif %}
+            <div class="gira-product-stock-row{% unless current_variant.available %} is-sold-out{% endunless %}" data-gira-product-stock><span class="gira-product-stock-icon" data-gira-stock-icon aria-hidden="true">{% if current_variant.available %}✓{% else %}×{% endif %}</span><span data-gira-stock-copy>{% if current_variant.available %}IN STOCK — AVAILABLE TO PURCHASE{% else %}CURRENTLY SOLD OUT{% endif %}</span></div>
+          </div>
+          <select class="visually-hidden" name="id" data-gira-variant-select aria-label="Select variant">
+            {% for variant in product.variants %}<option value="{{ variant.id }}" data-price="{{ variant.price | money | escape }}" data-compare="{% if variant.compare_at_price > variant.price %}{{ variant.compare_at_price | money | escape }}{% endif %}" data-available="{{ variant.available }}" data-featured-media-id="{{ variant.featured_media.id }}"{% if variant.id == current_variant.id %} selected{% endif %}>{{ variant.title }}</option>{% endfor %}
+          </select>
+          <div class="gira-product-detail-actions"><button class="gira-product-cart-button" type="submit" name="add" data-gira-add-to-cart{% unless current_variant.available %} disabled{% endunless %}>{% if current_variant.available %}ADD TO CART{% else %}SOLD OUT{% endif %}</button></div>
+          <div class="gira-product-form-errors" aria-live="polite">{{ form.errors | default_errors }}</div>
+        {% endform %}
+
+        <div class="gira-product-detail-features">
+          <div class="gira-product-feature-item"><span class="gira-product-feature-icon" aria-hidden="true">✦</span><div><p>PRODUCT DETAILS</p><span>{{ product.description | strip_html | truncate: 150 | default: 'Please refer to the product information for specifications.' }}</span></div></div>
+          <div class="gira-product-feature-item"><span class="gira-product-feature-icon" aria-hidden="true">↗</span><div><p>SHIPPING</p><span>Your order will be prepared and inspected before shipping. Some products may take up to two weeks to arrive.</span></div></div>
+          <div class="gira-product-feature-item"><span class="gira-product-feature-icon" aria-hidden="true">i</span><div><p>BEFORE YOU BUY</p><span>Colors and textures may appear different depending on lighting, device, and production batch.</span></div></div>
+        </div>
+      </section>
+    </div>
+    <div class="gira-product-detail-copy-grid"><div><p class="gira-product-detail-section-label">PRODUCT DESCRIPTION</p><div class="gira-product-detail-copy">{{ product.description }}</div></div><div><p class="gira-product-detail-section-label">CARE INSTRUCTIONS</p><ul class="gira-product-detail-list"><li>Gently clean the lenses with a soft glasses cloth.</li><li>Handle carefully when removing dirt to avoid scratching the lenses or frame.</li></ul></div></div>
+  </div>
+</main>
+
+{% schema %}
+{"name":"GIRA main product","settings":[],"disabled_on":{"groups":["header","footer"]}}
+{% endschema %}

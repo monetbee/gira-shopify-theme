@@ -10,7 +10,7 @@
 {
   "sections": {
     "main": {
-      "type": "product",
+      "type": "gira-main-product",
       "settings": {}
     }
   },
