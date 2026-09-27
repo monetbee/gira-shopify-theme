@@ -1,0 +1,41 @@
+<header class="gira-header" data-gira-header>
+  <div class="gira-container gira-header__inner">
+    <div class="gira-header__brand-area">
+      <button class="gira-menu-button" type="button" aria-expanded="false" aria-controls="gira-mobile-menu-{{ section.id }}" data-gira-menu-toggle>
+        <span class="visually-hidden">Open navigation menu</span>
+        <span class="gira-menu-icon" aria-hidden="true"></span>
+      </button>
+      <a class="gira-brand-lockup" href="{{ routes.root_url }}" aria-label="{{ shop.name }} home">
+        <span class="gira-mark" aria-hidden="true"></span><span class="gira-brand-wordmark">{{ section.settings.logo_text | default: 'GIRA' }}</span>
+      </a>
+    </div>
+
+    <nav class="gira-nav" aria-label="Main navigation">
+      {% if section.settings.menu != blank %}
+        {% for link in section.settings.menu.links %}<a href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.title }}</a>{% endfor %}
+      {% else %}
+        <a href="{{ routes.all_products_collection_url }}">SHOP</a><a href="{{ routes.all_products_collection_url }}">NEW DROP</a><a href="/pages/about">STORY</a><a href="/pages/faq">FAQ</a>
+      {% endif %}
+    </nav>
+
+    <div class="gira-header__actions">
+      {% if section.settings.show_shop_button %}<a class="gira-header-cta" href="{{ section.settings.shop_link | default: routes.all_products_collection_url }}">{{ section.settings.shop_label }}</a>{% endif %}
+      <a class="gira-icon-button" href="{{ routes.account_url }}" aria-label="Account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-4 3.1-6 7.5-6s6.7 2 7.5 6"/></svg></a>
+      <a class="gira-icon-button gira-cart-button" href="{{ routes.cart_url }}" aria-label="Cart"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l1.6 10.2a2 2 0 0 0 2 1.7h8.8a2 2 0 0 0 2-1.7L21 7H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>{{ cart.item_count }}</span></a>
+    </div>
+  </div>
+
+  <div id="gira-mobile-menu-{{ section.id }}" class="gira-mobile-menu" hidden data-gira-mobile-menu>
+    <nav class="gira-container" aria-label="Mobile navigation">
+      {% if section.settings.menu != blank %}
+        {% for link in section.settings.menu.links %}<a href="{{ link.url }}">{{ link.title }}</a>{% endfor %}
+      {% else %}
+        <a href="{{ routes.all_products_collection_url }}">SHOP</a><a href="{{ routes.all_products_collection_url }}">NEW DROP</a><a href="/pages/about">STORY</a><a href="/pages/faq">FAQ</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+{% schema %}
+{"name":"GIRA header","settings":[{"type":"text","id":"logo_text","label":"Logo text","default":"GIRA"},{"type":"link_list","id":"menu","label":"Navigation menu"},{"type":"checkbox","id":"show_shop_button","label":"Show shop button","default":true},{"type":"text","id":"shop_label","label":"Shop button label","default":"SHOP NOW"},{"type":"url","id":"shop_link","label":"Shop button link"}]}
+{% endschema %}

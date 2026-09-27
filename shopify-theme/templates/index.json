@@ -1,0 +1,51 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "marquee": {
+      "type": "gira-marquee",
+      "settings": {
+        "item_1": "GIRA",
+        "item_2": "GO INSANE.",
+        "item_3": "REJECT AVERAGE.",
+        "item_4": "SUNGLASSES AS OBJECTS"
+      }
+    },
+    "hero": {
+      "type": "gira-hero",
+      "settings": {
+        "eyebrow": "GIRA",
+        "title": "GIRA",
+        "subtitle": "GO INSANE. REJECT AVERAGE.",
+        "collection": "",
+        "products_to_show": 4,
+        "show_video": true,
+        "button_label": "SHOP ALL",
+        "button_link": "/collections/all"
+      }
+    },
+    "signal": {
+      "type": "gira-signal-products",
+      "settings": {
+        "eyebrow": "SHOP",
+        "title": "CHOOSE THE SIGNAL.",
+        "collection": "",
+        "products_to_show": 4,
+        "button_label": "SHOP ALL",
+        "button_link": "/collections/all"
+      }
+    }
+  },
+  "order": [
+    "marquee",
+    "hero",
+    "signal"
+  ]
+}

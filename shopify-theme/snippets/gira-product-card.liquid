@@ -1,0 +1,18 @@
+{% liquid
+  assign product_image = product.featured_image
+  if product_image == blank and product.images.size > 0
+    assign product_image = product.images.first
+  endif
+%}
+<article class="gira-product-card">
+  <a href="{{ product.url }}" class="gira-product-card__link">
+    <div class="gira-product-card__media">
+      {% if product_image != blank %}{{ product_image | image_url: width: 900 | image_tag: loading: 'lazy', widths: '360, 540, 720, 900', class: 'gira-product-card__image', alt: product_image.alt | default: product.title }}{% else %}<div class="gira-product-card__fallback">NO IMAGE</div>{% endif %}
+      {% unless product.available %}<span class="gira-product-card__status">SOLD OUT</span>{% endunless %}<span class="gira-product-card__view">VIEW PRODUCT <b>→</b></span>
+    </div>
+    <div class="gira-product-card__meta">
+      {% if product.tags.size > 0 %}<p class="gira-product-card__tags">{% for tag in product.tags limit: 3 %}<span>#{{ tag }}</span>{% endfor %}</p>{% endif %}
+      <p class="gira-product-card__title">{{ product.title }}</p><span class="gira-product-card__price">{{ product.price | money }}{% if product.compare_at_price > product.price %}<s>{{ product.compare_at_price | money }}</s>{% endif %}</span>
+    </div>
+  </a>
+</article>

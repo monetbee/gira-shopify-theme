@@ -1,0 +1,19 @@
+{% liquid
+  assign featured_collection = section.settings.collection
+  if featured_collection == blank
+    assign featured_collection = collections.all
+  endif
+%}
+<section class="gira-editorial-shell">
+  {% if section.settings.show_video %}<video class="gira-hero-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true"><source src="{{ 'gira-hero.mp4' | asset_url }}" type="video/mp4"></video>{% endif %}
+  <div class="gira-hero-overlay" aria-hidden="true"></div>
+  <div class="gira-best-sellers gira-container">
+    <div class="gira-storefront-brand"><p class="gira-kicker">{{ section.settings.eyebrow }}</p><h1>{{ section.settings.title }}</h1><p>{{ section.settings.subtitle }}</p></div>
+    <h2>BEST SELLERS</h2>
+    {% if featured_collection.products_count > 0 %}<div class="gira-product-track">{% for product in featured_collection.products limit: section.settings.products_to_show %}{% render 'gira-product-card', product: product %}{% endfor %}</div>{% else %}<p class="gira-empty-state">Select a collection with products in the Theme Editor.</p>{% endif %}
+    {% if section.settings.button_label != blank %}<p class="gira-section-action"><a class="gira-shop-all" href="{{ section.settings.button_link | default: featured_collection.url }}">{{ section.settings.button_label }} <span>→</span></a></p>{% endif %}
+  </div>
+</section>
+{% schema %}
+{"name":"GIRA hero + best sellers","settings":[{"type":"checkbox","id":"show_video","label":"Show GIRA background video","default":true},{"type":"text","id":"eyebrow","label":"Eyebrow","default":"GIRA"},{"type":"text","id":"title","label":"Title","default":"GIRA"},{"type":"text","id":"subtitle","label":"Subtitle","default":"GO INSANE. REJECT AVERAGE."},{"type":"collection","id":"collection","label":"Best sellers collection"},{"type":"range","id":"products_to_show","min":2,"max":8,"step":1,"label":"Products to show","default":4},{"type":"text","id":"button_label","label":"Button label","default":"SHOP ALL"},{"type":"url","id":"button_link","label":"Button link"}],"presets":[{"name":"GIRA hero + best sellers"}]}
+{% endschema %}

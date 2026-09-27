@@ -1,0 +1,14 @@
+{% liquid
+  assign signal_collection = section.settings.collection
+  if signal_collection == blank
+    assign signal_collection = collections.all
+  endif
+%}
+<section class="gira-signal-section"><div class="gira-container">
+  <div class="gira-signal-section__head"><div><p class="gira-kicker">{{ section.settings.eyebrow }}</p><h2>{{ section.settings.title }}</h2></div>{% if section.settings.show_tags and signal_collection.all_tags.size > 0 %}<div class="gira-signal-pills">{% for tag in signal_collection.all_tags limit: 5 %}<a href="{{ signal_collection.url }}/{{ tag | handle }}">{{ tag }}</a>{% endfor %}</div>{% endif %}</div>
+  {% if signal_collection.products_count > 0 %}<div class="gira-product-track gira-product-track--signal">{% for product in signal_collection.products limit: section.settings.products_to_show %}{% render 'gira-product-card', product: product %}{% endfor %}</div>{% else %}<p class="gira-empty-state">Select a collection with products in the Theme Editor.</p>{% endif %}
+  {% if section.settings.button_label != blank %}<p class="gira-section-action"><a class="gira-shop-all" href="{{ section.settings.button_link | default: signal_collection.url }}">{{ section.settings.button_label }} <span>→</span></a></p>{% endif %}
+</div></section>
+{% schema %}
+{"name":"GIRA signal products","settings":[{"type":"text","id":"eyebrow","label":"Eyebrow","default":"SHOP"},{"type":"text","id":"title","label":"Title","default":"CHOOSE THE SIGNAL."},{"type":"collection","id":"collection","label":"Collection"},{"type":"range","id":"products_to_show","min":2,"max":8,"step":1,"label":"Products to show","default":4},{"type":"checkbox","id":"show_tags","label":"Show collection tags","default":true},{"type":"text","id":"button_label","label":"Button label","default":"SHOP ALL"},{"type":"url","id":"button_link","label":"Button link"}],"presets":[{"name":"GIRA signal products"}]}
+{% endschema %}

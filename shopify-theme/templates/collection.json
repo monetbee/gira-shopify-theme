@@ -1,0 +1,18 @@
+{
+  "sections": {
+    "main": {
+      "type": "gira-main-collection",
+      "settings": {
+        "eyebrow": "ALL SHADES",
+        "fallback_title": "SHOP THE COLLECTION.",
+        "intro": "Explore the full GIRA collection.",
+        "products_per_page": 12,
+        "desktop_columns": "4",
+        "mobile_columns": "2",
+        "show_tags": true,
+        "show_sort": true
+      }
+    }
+  },
+  "order": ["main"]
+}

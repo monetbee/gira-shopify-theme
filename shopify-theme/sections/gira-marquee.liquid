@@ -1,0 +1,6 @@
+<section class="gira-marquee" aria-label="GIRA updates"><div class="gira-marquee__track">
+  {% for duplicate in (1..2) %}{% for i in (1..4) %}{% assign setting = 'item_' | append: i %}{% assign item = section.settings[setting] %}{% if item != blank %}<span>{{ item }}</span>{% endif %}{% endfor %}{% endfor %}
+</div></section>
+{% schema %}
+{"name":"GIRA marquee","settings":[{"type":"text","id":"item_1","label":"Item 1","default":"GIRA"},{"type":"text","id":"item_2","label":"Item 2","default":"GO INSANE."},{"type":"text","id":"item_3","label":"Item 3","default":"REJECT AVERAGE."},{"type":"text","id":"item_4","label":"Item 4","default":"SUNGLASSES AS OBJECTS"}],"presets":[{"name":"GIRA marquee"}]}
+{% endschema %}
