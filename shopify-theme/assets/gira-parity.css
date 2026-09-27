@@ -1,0 +1,314 @@
+/* Exact visual values ported from app/globals.css and Home/Header/Footer components. */
+.gira-theme {
+  background:
+    radial-gradient(circle at top, rgba(111, 73, 255, 0.16), transparent 22%),
+    linear-gradient(135deg, #09080d 0%, #130f1b 25%, #09080d 100%);
+  color: #f5f1eb;
+  font-family: Geist, Arial, Helvetica, sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1.5;
+}
+
+.gira-container {
+  width: min(100% - 2rem, 80rem);
+}
+
+.gira-header__inner {
+  min-height: 4.5rem;
+  height: auto;
+  padding: 1rem 0;
+}
+
+.gira-brand-lockup {
+  gap: 0.625rem;
+  letter-spacing: 0.24em;
+}
+
+.gira-brand-wordmark {
+  font-size: clamp(1.1rem, 1.5vw, 1.5rem);
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.gira-mark {
+  display: inline-block;
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 0.18rem;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #cab7ff 0%, #6f49ff 100%);
+}
+
+.gira-nav {
+  gap: 1.5rem;
+}
+
+.gira-nav a {
+  color: rgba(245, 241, 235, 0.8);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.gira-nav a:hover {
+  color: #fff;
+}
+
+.gira-header__actions,
+.gira-header__brand-area {
+  gap: 0.75rem;
+}
+
+.gira-header-cta {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.gira-icon-button,
+.gira-menu-button {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.gira-mobile-menu nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 0;
+}
+
+.gira-mobile-menu a {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f5f1eb;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.gira-mobile-menu a:last-child {
+  border-bottom: 0;
+}
+
+.gira-marquee {
+  display: flex;
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.gira-marquee__track {
+  align-items: center;
+  min-width: max-content;
+  padding: 0.85rem 0;
+}
+
+.gira-marquee span {
+  color: #f5f1eb;
+  text-transform: uppercase;
+}
+
+.gira-editorial-shell {
+  background:
+    radial-gradient(circle at 25% 18%, rgba(111, 73, 255, 0.36), transparent 22%),
+    radial-gradient(circle at 75% 22%, rgba(184, 109, 255, 0.2), transparent 24%),
+    linear-gradient(135deg, #06060b 0%, #120d1a 30%, #09080d 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gira-hero-video {
+  z-index: 0;
+  display: block;
+  background: #09080d;
+}
+
+.gira-hero-overlay {
+  z-index: 1;
+  background: linear-gradient(135deg, rgba(25, 10, 60, 0.8), rgba(10, 5, 20, 0.68));
+}
+
+.gira-editorial-shell::before,
+.gira-editorial-shell::after {
+  z-index: 1;
+}
+
+.gira-editorial-shell::before {
+  inset: auto 6% 16% auto;
+  width: 18rem;
+  height: 18rem;
+  background: radial-gradient(circle, rgba(111, 73, 255, 0.18), transparent 70%);
+}
+
+.gira-editorial-shell::after {
+  inset: 12% auto auto -8%;
+  width: 16rem;
+  height: 16rem;
+  background: radial-gradient(circle, rgba(209, 109, 255, 0.16), transparent 72%);
+}
+
+.gira-best-sellers {
+  z-index: 2;
+  padding: 1.5rem 0 2rem;
+  color: #fff;
+}
+
+.gira-storefront-brand {
+  margin-bottom: 1.5rem;
+}
+
+.gira-storefront-brand .gira-brand-wordmark {
+  margin: 0;
+  padding-left: 0.28em;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  line-height: 1.1;
+}
+
+.gira-storefront-brand p {
+  margin: 0.5rem 0 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+}
+
+.gira-storefront-brand .gira-kicker {
+  margin: 0;
+  color: rgba(245, 241, 235, 0.72);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+}
+
+.gira-best-sellers h2 {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.gira-best-sellers-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+}
+
+.gira-best-sellers .gira-product-card__media {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.gira-best-sellers .gira-product-card:hover .gira-product-card__media {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.gira-best-sellers .gira-product-card__title {
+  color: #fff;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.gira-best-sellers .gira-product-card__price {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.gira-best-sellers .gira-product-card__view,
+.gira-best-sellers .gira-product-card__fallback {
+  color: #fff;
+}
+
+.gira-section-action {
+  margin: 1.5rem 0 0;
+}
+
+.gira-shop-all {
+  min-height: 2.75rem;
+  padding: 0.75rem 2rem;
+  border: 1px solid #f5f1eb;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.gira-footer__grid {
+  gap: 2.5rem;
+  padding: 3rem 0;
+}
+
+.gira-footer__brand {
+  font-size: 1.125rem;
+}
+
+.gira-footer li a {
+  font-size: 0.875rem;
+}
+
+.gira-footer__bottom,
+.gira-footer__bottom .gira-container {
+  font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .gira-container {
+    width: min(100% - 3rem, 80rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .gira-container {
+    width: min(100% - 4rem, 80rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .gira-best-sellers {
+    padding: 1.25rem 0 1.5rem;
+  }
+
+  .gira-storefront-brand {
+    margin-bottom: 1.25rem;
+  }
+
+  .gira-best-sellers-track {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 82%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 0.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: #aaa transparent;
+    padding: 0.25rem 0.25rem 0.75rem;
+    margin: -0.25rem;
+  }
+
+  .gira-product-card {
+    scroll-snap-align: start;
+  }
+
+  .gira-product-card__view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .gira-section-action {
+    margin-top: 1rem;
+  }
+
+  .gira-footer__grid {
+    gap: 2rem;
+    padding: 2.5rem 0;
+  }
+}

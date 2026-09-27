@@ -21,6 +21,17 @@
     {{ 'critical.css' | asset_url | stylesheet_tag: preload: true }}
     {{ 'gira.css' | asset_url | stylesheet_tag }}
     {{ 'gira-collection.css' | asset_url | stylesheet_tag }}
+    {{ 'gira-parity.css' | asset_url | stylesheet_tag }}
+
+    <style>
+      @font-face {
+        font-family: 'Geist';
+        src: url('{{ 'geist-latin.woff2' | asset_url }}') format('woff2');
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: swap;
+      }
+    </style>
 
     {% # Social, title, etc. %}
     {% render 'meta-tags' %}
