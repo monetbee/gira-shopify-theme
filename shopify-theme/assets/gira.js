@@ -13,6 +13,198 @@
     if (event.target.matches('[data-gira-sort]')) event.target.form.submit();
   });
 
+  document.querySelectorAll('[data-gira-collection]').forEach((root) => {
+    const grid = root.querySelector('[data-gira-collection-grid]');
+    const search = root.querySelector('[data-gira-collection-search]');
+    const count = root.querySelector('[data-gira-collection-count]');
+    const empty = root.querySelector('[data-gira-collection-empty]');
+    const chips = root.querySelector('[data-gira-filter-chips]');
+    const pagination = root.querySelector('[data-gira-collection-pagination]');
+    const sheet = root.querySelector('[data-gira-filter-sheet]');
+    const mobileOptions = root.querySelector('[data-gira-filter-mobile-options]');
+    const state = { style: '', color: '', price: '', shape: '', q: search?.value.trim() || '' };
+    const params = new URLSearchParams(window.location.search);
+    ['style', 'color', 'price', 'shape', 'q'].forEach((key) => { state[key] = params.get(key) || state[key]; });
+    let loadedAllPages = false;
+    let loadingPages = null;
+
+    const labelFor = (type, value) => {
+      const labels = { style: value, color: value, price: value === 'under-5000' ? 'UNDER ¥5,000' : value === '5000-7499' ? '¥5,000 – ¥7,499' : value === '7500-9999' ? '¥7,500 – ¥9,999' : '¥10,000+', shape: value };
+      return (labels[type] || value).toUpperCase();
+    };
+    const hasFilters = () => Object.values(state).some(Boolean);
+    const priceMatches = (cents) => {
+      if (!state.price) return true;
+      if (state.price === 'under-5000') return cents < 500000;
+      if (state.price === '5000-7499') return cents >= 500000 && cents < 750000;
+      if (state.price === '7500-9999') return cents >= 750000 && cents < 1000000;
+      return cents >= 1000000;
+    };
+    const matches = (item) => {
+      const tags = (item.dataset.giraTags || '').toLowerCase();
+      const colors = (item.dataset.giraColors || '').toLowerCase();
+      const shapes = (item.dataset.giraShapes || '').toLowerCase();
+      const text = `${item.dataset.giraTitle || ''} ${tags} ${colors} ${shapes}`.toLowerCase();
+      return (!state.style || tags.split(/\s+/).includes(state.style))
+        && (!state.color || colors.includes(state.color) || tags.includes(`color-${state.color}`))
+        && (!state.shape || shapes.includes(`shape-${state.shape}`))
+        && priceMatches(Number(item.dataset.giraPrice || 0))
+        && (!state.q || text.includes(state.q.toLowerCase()));
+    };
+    const syncUrl = () => {
+      const next = new URL(window.location.href);
+      ['style', 'color', 'price', 'shape', 'q'].forEach((key) => state[key] ? next.searchParams.set(key, state[key]) : next.searchParams.delete(key));
+      next.searchParams.delete('page');
+      history.replaceState({}, '', next);
+      root.querySelectorAll('[data-gira-query-input]').forEach((input) => { input.value = state[input.dataset.giraQueryInput] || ''; });
+      root.querySelectorAll('[data-gira-collection-pagination] a').forEach((link) => {
+        const href = new URL(link.href, window.location.origin);
+        ['style', 'color', 'price', 'shape', 'q'].forEach((key) => state[key] ? href.searchParams.set(key, state[key]) : href.searchParams.delete(key));
+        link.href = href;
+      });
+    };
+    const syncControls = () => {
+      root.querySelectorAll('[data-gira-filter-control]').forEach((button) => {
+        const type = button.dataset.giraFilterType;
+        button.setAttribute('aria-pressed', String(Boolean(button.dataset.giraFilterValue) && state[type] === button.dataset.giraFilterValue || !button.dataset.giraFilterValue && !state[type]));
+      });
+      if (search && search.value !== state.q) search.value = state.q;
+      const active = Object.entries(state).filter(([, value]) => value);
+      root.querySelectorAll('[data-gira-filter-count]').forEach((node) => { node.textContent = `(${active.length})`; });
+      chips.hidden = active.length === 0;
+      chips.replaceChildren(...active.map(([type, value]) => {
+        const button = document.createElement('button');
+        button.className = 'gira-collection__chip'; button.type = 'button'; button.dataset.giraRemoveFilter = type;
+        button.textContent = `${labelFor(type, value)} ×`;
+        return button;
+      }));
+      if (active.length) { const clear = document.createElement('button'); clear.className = 'gira-collection__clear'; clear.type = 'button'; clear.dataset.giraClearFilters = ''; clear.textContent = 'CLEAR ALL'; chips.append(clear); }
+    };
+    const filterProducts = () => {
+      const items = [...grid.querySelectorAll('[data-gira-collection-item]')];
+      let visible = 0;
+      items.forEach((item) => { const visibleItem = matches(item); item.hidden = !visibleItem; if (visibleItem) visible += 1; });
+      empty.hidden = visible !== 0;
+      count.textContent = `${visible} ${visible === 1 ? 'PRODUCT' : 'PRODUCTS'}${hasFilters() ? ' / FILTERED' : ''}`;
+      if (pagination) pagination.hidden = hasFilters();
+    };
+    const loadAllPages = async () => {
+      const pages = Number(count.dataset.giraPages || 1);
+      if (loadedAllPages || pages < 2) return;
+      if (!loadingPages) loadingPages = (async () => {
+        const currentPage = Number(new URLSearchParams(window.location.search).get('page') || 1);
+        const requests = [];
+        for (let page = 1; page <= pages; page += 1) {
+          if (page === currentPage) continue;
+          const url = new URL(window.location.href);
+          url.searchParams.set('page', String(page)); url.searchParams.set('section_id', 'gira-main-collection');
+          requests.push(fetch(url).then((response) => response.text()));
+        }
+        const html = await Promise.all(requests);
+        html.forEach((markup) => {
+          const documentFragment = new DOMParser().parseFromString(markup, 'text/html');
+          documentFragment.querySelectorAll('[data-gira-collection-item]').forEach((item) => grid.append(item));
+        });
+        loadedAllPages = true;
+      })().finally(() => { loadingPages = null; });
+      await loadingPages;
+    };
+    const apply = async () => {
+      syncUrl(); syncControls();
+      if (hasFilters()) await loadAllPages();
+      filterProducts();
+    };
+    const desktopFilterMenus = window.matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)');
+    const filterDropdowns = [...root.querySelectorAll('.gira-collection__filter-dropdown')];
+    const setDropdownOpen = (dropdown, isOpen) => {
+      const summary = dropdown.querySelector('summary');
+      if (isOpen) {
+        filterDropdowns.forEach((other) => {
+          if (other !== dropdown) {
+            other.open = false;
+            other.classList.remove('is-align-end');
+            other.querySelector('summary')?.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+      dropdown.open = isOpen;
+      summary?.setAttribute('aria-expanded', String(isOpen));
+      if (!isOpen) {
+        dropdown.classList.remove('is-align-end');
+        return;
+      }
+      requestAnimationFrame(() => {
+        const options = dropdown.querySelector('.gira-collection__filter-options');
+        if (!options || !dropdown.open) return;
+        dropdown.classList.remove('is-align-end');
+        const viewportGutter = 8;
+        if (options.getBoundingClientRect().right > window.innerWidth - viewportGutter) {
+          dropdown.classList.add('is-align-end');
+        }
+      });
+    };
+    filterDropdowns.forEach((dropdown) => {
+      const summary = dropdown.querySelector('summary');
+      dropdown.addEventListener('toggle', () => {
+        const isOpen = dropdown.open;
+        summary?.setAttribute('aria-expanded', String(isOpen));
+        if (isOpen && desktopFilterMenus.matches) setDropdownOpen(dropdown, true);
+      });
+      dropdown.addEventListener('pointerenter', () => { if (desktopFilterMenus.matches) setDropdownOpen(dropdown, true); });
+      dropdown.addEventListener('pointerleave', () => { if (desktopFilterMenus.matches) setDropdownOpen(dropdown, false); });
+      summary?.addEventListener('click', (event) => {
+        if (!desktopFilterMenus.matches) return;
+        // Hover opens before a click can reach <summary>. Prevent the native
+        // details toggle from immediately closing the already-open menu.
+        event.preventDefault();
+        setDropdownOpen(dropdown, true);
+      });
+      summary?.addEventListener('focus', () => { if (desktopFilterMenus.matches) setDropdownOpen(dropdown, true); });
+      dropdown.addEventListener('focusout', (event) => {
+        if (desktopFilterMenus.matches && !dropdown.contains(event.relatedTarget)) setDropdownOpen(dropdown, false);
+      });
+      dropdown.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          summary?.focus();
+          setDropdownOpen(dropdown, false);
+        }
+      });
+    });
+    window.addEventListener('resize', () => {
+      if (!desktopFilterMenus.matches) return;
+      filterDropdowns.filter((dropdown) => dropdown.open).forEach((dropdown) => setDropdownOpen(dropdown, true));
+    });
+    root.querySelectorAll('[data-gira-filter-control]').forEach((button) => button.addEventListener('click', async () => {
+      const type = button.dataset.giraFilterType; const value = button.dataset.giraFilterValue;
+      state[type] = state[type] === value || !value ? '' : value;
+      await apply();
+      const dropdown = button.closest('.gira-collection__filter-dropdown');
+      if (dropdown) setDropdownOpen(dropdown, false);
+    }));
+    search?.addEventListener('input', async () => { state.q = search.value.trim(); await apply(); });
+    chips.addEventListener('click', async (event) => {
+      const remove = event.target.closest('[data-gira-remove-filter]');
+      if (remove) state[remove.dataset.giraRemoveFilter] = '';
+      if (event.target.closest('[data-gira-clear-filters]')) Object.keys(state).forEach((key) => { state[key] = ''; });
+      await apply();
+    });
+    const closeSheet = () => { if (sheet) sheet.hidden = true; };
+    root.querySelector('[data-gira-filter-open]')?.addEventListener('click', () => { if (!sheet) return; mobileOptions.replaceChildren(); const styleCopy = document.createElement('section'); const styleTitle = document.createElement('h3'); styleTitle.textContent = 'STYLE'; styleCopy.append(styleTitle); const styleOptions = root.querySelector('.gira-collection__tags')?.cloneNode(true); if (styleOptions) styleCopy.append(styleOptions); mobileOptions.append(styleCopy); root.querySelectorAll('.gira-collection__filter-dropdown').forEach((dropdown) => { const copy = document.createElement('section'); const title = document.createElement('h3'); title.textContent = dropdown.querySelector('summary').textContent.replace('▾', '').trim(); copy.append(title); const options = dropdown.querySelector('.gira-collection__filter-options')?.cloneNode(true); if (options) copy.append(options); mobileOptions.append(copy); }); sheet.hidden = false; });
+    mobileOptions?.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-gira-filter-control]');
+      if (!button) return;
+      const type = button.dataset.giraFilterType; const value = button.dataset.giraFilterValue;
+      state[type] = state[type] === value || !value ? '' : value;
+      await apply();
+    });
+    root.querySelectorAll('[data-gira-filter-close]').forEach((button) => button.addEventListener('click', closeSheet));
+    root.querySelector('[data-gira-filter-apply]')?.addEventListener('click', closeSheet);
+    root.querySelector('[data-gira-clear-filters]')?.addEventListener('click', async () => { Object.keys(state).forEach((key) => { state[key] = ''; }); await apply(); });
+    root.querySelector('[data-gira-mobile-sort]')?.addEventListener('change', (event) => { const desktopSort = root.querySelector('[data-gira-sort]'); if (!desktopSort) return; desktopSort.value = event.target.value; desktopSort.dispatchEvent(new Event('change', { bubbles: true })); });
+    window.addEventListener('popstate', () => { const next = new URLSearchParams(window.location.search); ['style', 'color', 'price', 'shape', 'q'].forEach((key) => { state[key] = next.get(key) || ''; }); apply(); });
+    apply();
+  });
+
   const closeAccountMenu = () => {
     document.querySelectorAll('[data-gira-account-menu]').forEach((menuRoot) => {
       const toggle = menuRoot.querySelector('[data-gira-account-toggle]');
@@ -35,16 +227,10 @@
     const desktopAccountMenu = window.matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)');
 
     toggle.addEventListener('click', (event) => {
-      if (desktopAccountMenu.matches) {
-        const accountUrl = toggle.dataset.giraAccountUrl;
-        if (accountUrl) window.location.assign(accountUrl);
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+      if (!desktopAccountMenu.matches) return;
+      // The member control is a normal link. Desktop hover exposes the menu;
+      // activation always takes the member to the Theme-native MY GIRA page.
       closeAccountMenu();
-      setAccountMenuOpen(menuRoot, !isOpen);
     });
 
     if (desktopAccountMenu.matches) {

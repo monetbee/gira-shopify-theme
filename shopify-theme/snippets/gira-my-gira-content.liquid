@@ -13,7 +13,22 @@
         <article><p>GIRA CLUB</p><strong>MEMBER</strong><span>FREE TO JOIN</span></article>
       </section>
       <section class="gira-my-gira-benefits"><p>GIRA CLUB</p><h2>YOUR MEMBERSHIP / BENEFITS</h2><ul><li>Purchase to earn SPARKS</li><li>Use SPARKS for future rewards</li><li>Keep your GIRA order history close</li></ul></section>
-      <nav class="gira-my-gira-links" aria-label="My GIRA links"><a href="{{ account_url_base }}{% if account_url_parts.size > 1 %}/orders?{{ account_url_query }}{% else %}/orders{% endif %}">ORDER HISTORY <span>→</span></a><a href="{{ routes.account_profile_url }}">PROFILE <span>→</span></a><a href="/pages/gira-club">CLUB BENEFITS <span>→</span></a></nav>
+      <section class="gira-my-gira-orders" aria-labelledby="gira-my-gira-orders-title">
+        <div class="gira-my-gira-orders__heading"><p>ORDER HISTORY</p><h2 id="gira-my-gira-orders-title">RECENT ORDERS</h2></div>
+        {% if customer.orders_count > 0 %}
+          {% paginate customer.orders by 3 %}
+            <div class="gira-my-gira-orders__list">
+              {% for order in customer.orders %}
+                <a href="{{ order.customer_order_url }}" class="gira-my-gira-order"><span>#{{ order.name | remove: '#' }}</span><span>{{ order.created_at | date: '%Y.%m.%d' }}</span><strong>{{ order.total_price | money }}</strong><span>{{ order.financial_status_label }}</span></a>
+              {% endfor %}
+            </div>
+          {% endpaginate %}
+        {% else %}
+          <p class="gira-my-gira-orders__empty">NO ORDERS YET. YOUR NEXT PAIR IS WAITING.</p>
+        {% endif %}
+        <a class="gira-my-gira-orders__all" href="{{ account_url_base }}{% if account_url_parts.size > 1 %}/orders?{{ account_url_query }}{% else %}/orders{% endif %}">VIEW ALL ORDER HISTORY <span>→</span></a>
+      </section>
+      <nav class="gira-my-gira-links" aria-label="My GIRA links"><a href="{{ account_url_base }}{% if account_url_parts.size > 1 %}/orders?{{ account_url_query }}{% else %}/orders{% endif %}">ORDER HISTORY <span>→</span></a><a href="{{ routes.account_profile_url }}">PROFILE <span>→</span></a><a href="{{ routes.account_addresses_url }}">ADDRESSES <span>→</span></a><a href="/pages/gira-club">CLUB BENEFITS <span>→</span></a></nav>
       <section class="gira-my-gira-settings"><p>ACCOUNT SETTINGS</p><a href="{{ routes.account_profile_url }}">PROFILE <span>→</span></a><a href="{{ routes.account_logout_url }}">SIGN OUT <span>→</span></a></section>
     </div>
   </main>

@@ -1,16 +1,62 @@
-<section class="gira-collection gira-collection--desktop-{{ section.settings.desktop_columns }} gira-collection--mobile-{{ section.settings.mobile_columns }}">
+{% liquid
+  assign style_value = request.params.style | default: '' | handle
+  if style_value == blank and current_tags != blank
+    assign style_value = current_tags.first | handle
+  endif
+  assign color_value = request.params.color | default: '' | handle
+  assign price_value = request.params.price | default: '' | handle
+  assign shape_value = request.params.shape | default: '' | handle
+  assign search_value = request.params.q | default: ''
+  assign shape_tags = ''
+  assign color_tokens = ''
+  for product in collection.products
+    for option in product.options_with_values
+      assign option_name = option.name | downcase
+      if option_name == 'color'
+        for value in option.values
+          assign color_tokens = color_tokens | append: value | downcase | append: ' '
+        endfor
+      endif
+    endfor
+    for tag in product.tags
+      assign tag_handle = tag | handle
+      if tag_handle contains 'color-'
+        assign color_tokens = color_tokens | append: tag_handle | append: ' '
+      endif
+    endfor
+  endfor
+  for tag in collection.all_tags
+    assign tag_handle = tag | handle
+    if tag_handle contains 'shape-'
+      assign shape_tags = shape_tags | append: tag | append: '||'
+    endif
+  endfor
+%}
+<section class="gira-collection gira-collection--desktop-{{ section.settings.desktop_columns }} gira-collection--mobile-{{ section.settings.mobile_columns }}" data-gira-collection data-gira-collection-url="{{ collection.url }}">
   <header class="gira-collection__hero"><div class="gira-container gira-collection__heading"><div><p class="gira-collection__kicker">{{ section.settings.eyebrow }}</p><h1>{{ section.settings.fallback_title | default: collection.title }}</h1></div><p>{{ collection.description | strip_html | default: section.settings.intro }}</p></div></header>
   <div class="gira-container gira-collection__content">
-    <div class="gira-collection__toolbar">
-      {% if section.settings.show_tags %}<nav class="gira-collection__tags" aria-label="Filter products by tag"><a href="{{ collection.url }}"{% if current_tags == blank %} aria-current="page"{% endif %}>ALL</a>{% for tag in collection.all_tags %}{% assign tag_handle = tag | handle %}<a href="{{ collection.url }}/{{ tag_handle }}"{% if current_tags contains tag %} aria-current="page"{% endif %}>{{ tag }}</a>{% endfor %}</nav>{% endif %}
-      {% if section.settings.show_sort %}<form class="gira-collection__sort" method="get"><label for="SortBy-{{ section.id }}">SORT BY</label><select id="SortBy-{{ section.id }}" name="sort_by" data-gira-sort>{% for option in collection.sort_options %}<option value="{{ option.value }}"{% if option.value == collection.sort_by %} selected="selected"{% endif %}>{{ option.name | upcase }}</option>{% endfor %}</select></form>{% endif %}
+    <div class="gira-collection__discovery">
+      <label class="gira-collection__search" for="GiraCollectionSearch-{{ section.id }}"><span class="visually-hidden">Search products</span><input id="GiraCollectionSearch-{{ section.id }}" type="search" value="{{ search_value | escape }}" placeholder="Search shades..." autocomplete="off" data-gira-collection-search><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="5.9"></circle><path d="m15.4 15.4 5 5"></path></svg></label>
+      <div class="gira-collection__desktop-filters" data-gira-filter-panel>
+        {% if section.settings.show_tags %}<nav class="gira-collection__tags" aria-label="Filter products by style"><button type="button" data-gira-filter-control data-gira-filter-type="style" data-gira-filter-value=""{% if style_value == blank %} aria-pressed="true"{% endif %}>ALL</button>{% for tag in collection.all_tags %}{% assign tag_handle = tag | handle %}{% unless tag_handle contains 'color-' or tag_handle contains 'shape-' %}<button type="button" data-gira-filter-control data-gira-filter-type="style" data-gira-filter-value="{{ tag_handle }}"{% if style_value == tag_handle %} aria-pressed="true"{% endif %}>{{ tag }}</button>{% endunless %}{% endfor %}</nav>{% endif %}
+        <div class="gira-collection__filter-selects">
+          <details class="gira-collection__filter-dropdown"><summary aria-expanded="false">COLOR <span>▾</span></summary><div class="gira-collection__filter-options">{% assign colors = 'black,white,silver,gold,brown,red,purple,pink,blue,green,clear' | split: ',' %}{% assign has_colors = false %}{% for color in colors %}{% if color_tokens contains color %}{% assign has_colors = true %}<button type="button" data-gira-filter-control data-gira-filter-type="color" data-gira-filter-value="{{ color }}"{% if color_value == color %} aria-pressed="true"{% endif %}>{{ color | upcase }}</button>{% endif %}{% endfor %}{% unless has_colors %}<p class="gira-collection__filter-note">COLOR DATA COMING SOON</p>{% endunless %}</div></details>
+          <details class="gira-collection__filter-dropdown"><summary aria-expanded="false">PRICE <span>▾</span></summary><div class="gira-collection__filter-options"><button type="button" data-gira-filter-control data-gira-filter-type="price" data-gira-filter-value="under-5000"{% if price_value == 'under-5000' %} aria-pressed="true"{% endif %}>UNDER ¥5,000</button><button type="button" data-gira-filter-control data-gira-filter-type="price" data-gira-filter-value="5000-7499"{% if price_value == '5000-7499' %} aria-pressed="true"{% endif %}>¥5,000 – ¥7,499</button><button type="button" data-gira-filter-control data-gira-filter-type="price" data-gira-filter-value="7500-9999"{% if price_value == '7500-9999' %} aria-pressed="true"{% endif %}>¥7,500 – ¥9,999</button><button type="button" data-gira-filter-control data-gira-filter-type="price" data-gira-filter-value="10000-plus"{% if price_value == '10000-plus' %} aria-pressed="true"{% endif %}>¥10,000+</button></div></details>
+          <details class="gira-collection__filter-dropdown"><summary aria-expanded="false">SHAPE <span>▾</span></summary><div class="gira-collection__filter-options">{% if shape_tags != blank %}{% for tag in collection.all_tags %}{% assign tag_handle = tag | handle %}{% if tag_handle contains 'shape-' %}{% assign shape = tag_handle | remove: 'shape-' %}<button type="button" data-gira-filter-control data-gira-filter-type="shape" data-gira-filter-value="{{ shape }}"{% if shape_value == shape %} aria-pressed="true"{% endif %}>{{ shape | upcase }}</button>{% endif %}{% endfor %}{% else %}<p class="gira-collection__filter-note">SHAPE DATA COMING SOON</p>{% endif %}</div></details>
+          {% if section.settings.show_sort %}<form class="gira-collection__sort" method="get"><input type="hidden" name="q" value="{{ search_value | escape }}" data-gira-query-input="q"><input type="hidden" name="style" value="{{ style_value }}" data-gira-query-input="style"><input type="hidden" name="color" value="{{ color_value }}" data-gira-query-input="color"><input type="hidden" name="price" value="{{ price_value }}" data-gira-query-input="price"><input type="hidden" name="shape" value="{{ shape_value }}" data-gira-query-input="shape"><label for="SortBy-{{ section.id }}">SORT BY</label><select id="SortBy-{{ section.id }}" name="sort_by" data-gira-sort>{% for option in collection.sort_options %}<option value="{{ option.value }}"{% if option.value == collection.sort_by %} selected="selected"{% endif %}>{{ option.name | upcase }}</option>{% endfor %}</select></form>{% endif %}
+        </div>
+      </div>
+      <div class="gira-collection__mobile-controls"><button type="button" data-gira-filter-open>FILTER <span data-gira-filter-count>(0)</span></button>{% if section.settings.show_sort %}<label>SORT <select aria-label="Sort products" data-gira-mobile-sort>{% for option in collection.sort_options %}<option value="{{ option.value }}"{% if option.value == collection.sort_by %} selected="selected"{% endif %}>{{ option.name | upcase }}</option>{% endfor %}</select></label>{% endif %}</div>
     </div>
+    <div class="gira-collection__chips" data-gira-filter-chips hidden></div>
     {% paginate collection.products by section.settings.products_per_page %}
-      <p class="gira-collection__count" aria-live="polite">{{ collection.products_count }} {% if collection.products_count == 1 %}PRODUCT{% else %}PRODUCTS{% endif %}{% if current_tags != blank %} / {{ current_tags | join: ', ' | upcase }}{% endif %}{% if paginate.pages > 1 %} / PAGE {{ paginate.current_page }} OF {{ paginate.pages }}{% endif %}</p>
-      {% if collection.products_count > 0 %}<div class="gira-collection__grid">{% for product in collection.products %}{% render 'gira-product-card', product: product %}{% endfor %}</div>{% else %}<p class="gira-collection__empty">NO PRODUCTS FOUND. CHOOSE ANOTHER SIGNAL.</p>{% endif %}
-      {% if paginate.pages > 1 %}<nav class="gira-collection__pagination" aria-label="Product pages">{% if paginate.previous %}<a href="{{ paginate.previous.url }}" aria-label="Previous page">←</a>{% endif %}{% for part in paginate.parts %}{% if part.is_link %}<a href="{{ part.url }}" aria-label="Page {{ part.title }}">{{ part.title }}</a>{% else %}<span{% if part.title == paginate.current_page %} aria-current="page"{% endif %}>{{ part.title }}</span>{% endif %}{% endfor %}{% if paginate.next %}<a href="{{ paginate.next.url }}" aria-label="Next page">→</a>{% endif %}</nav>{% endif %}
+      <p class="gira-collection__count" aria-live="polite" data-gira-collection-count data-gira-pages="{{ paginate.pages }}">{{ collection.products_count }} {% if collection.products_count == 1 %}PRODUCT{% else %}PRODUCTS{% endif %}{% if paginate.pages > 1 %} / PAGE {{ paginate.current_page }} OF {{ paginate.pages }}{% endif %}</p>
+      <div class="gira-collection__grid" data-gira-collection-grid>{% for product in collection.products %}{% capture product_colors %}{% for option in product.options_with_values %}{% assign option_name = option.name | downcase %}{% if option_name == 'color' %}{% for value in option.values %}{{ value | downcase }} {% endfor %}{% endif %}{% endfor %}{% endcapture %}<article data-gira-collection-item data-gira-title="{{ product.title | downcase | escape }}" data-gira-tags="{{ product.tags | join: ' ' | downcase | escape }}" data-gira-colors="{{ product_colors | strip | escape }}" data-gira-shapes="{{ product.tags | join: ' ' | downcase | escape }}" data-gira-price="{{ product.price_min }}">{% render 'gira-product-card', product: product %}</article>{% endfor %}</div>
+      <p class="gira-collection__empty" data-gira-collection-empty hidden>NO SHADES FOUND. TRY ANOTHER SIGNAL.</p>
+      {% if paginate.pages > 1 %}<nav class="gira-collection__pagination" aria-label="Product pages" data-gira-collection-pagination>{% if paginate.previous %}<a href="{{ paginate.previous.url }}" aria-label="Previous page">←</a>{% endif %}{% for part in paginate.parts %}{% if part.is_link %}<a href="{{ part.url }}" aria-label="Page {{ part.title }}">{{ part.title }}</a>{% else %}<span{% if part.title == paginate.current_page %} aria-current="page"{% endif %}>{{ part.title }}</span>{% endif %}{% endfor %}{% if paginate.next %}<a href="{{ paginate.next.url }}" aria-label="Next page">→</a>{% endif %}</nav>{% endif %}
     {% endpaginate %}
   </div>
+  <div class="gira-collection__filter-sheet" data-gira-filter-sheet hidden><button class="gira-collection__filter-backdrop" type="button" aria-label="Close filters" data-gira-filter-close></button><div class="gira-collection__filter-dialog" role="dialog" aria-modal="true" aria-label="Filter products"><div class="gira-collection__filter-dialog-head"><strong>FILTERS</strong><button type="button" aria-label="Close filters" data-gira-filter-close>×</button></div><div class="gira-collection__filter-mobile-options" data-gira-filter-mobile-options></div><div class="gira-collection__filter-dialog-actions"><button type="button" data-gira-clear-filters>CLEAR ALL</button><button type="button" data-gira-filter-apply>APPLY FILTERS</button></div></div></div>
 </section>
 {% schema %}
 {"name":"GIRA main collection","settings":[{"type":"text","id":"eyebrow","label":"Eyebrow","default":"ALL SHADES"},{"type":"text","id":"fallback_title","label":"Fallback title","default":"SHOP THE COLLECTION."},{"type":"textarea","id":"intro","label":"Fallback intro","default":"Explore the full GIRA collection."},{"type":"range","id":"products_per_page","min":4,"max":48,"step":4,"label":"Products per page","default":12},{"type":"select","id":"desktop_columns","label":"Desktop columns","options":[{"value":"2","label":"2"},{"value":"3","label":"3"},{"value":"4","label":"4"}],"default":"4"},{"type":"select","id":"mobile_columns","label":"Mobile columns","options":[{"value":"1","label":"1"},{"value":"2","label":"2"}],"default":"2"},{"type":"checkbox","id":"show_tags","label":"Show product tags","default":true},{"type":"checkbox","id":"show_sort","label":"Show sort","default":true}],"presets":[{"name":"GIRA main collection"}]}
