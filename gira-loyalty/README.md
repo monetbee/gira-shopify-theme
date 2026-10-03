@@ -1,8 +1,9 @@
 # GIRA Loyalty backend foundation
 
-This project is intentionally independent of `shopify-theme/`. It contains no
-Shopify credentials, App Proxy route, webhook subscription, Admin API call,
-discount creation, or Theme code. Those integrations are a later phase.
+This project is intentionally independent of the Shopify Theme and Next.js.
+It includes a server-only Shopify Client Credentials Grant client and a manual,
+fixed read-only connection check. No App Proxy route, webhook subscription,
+discount creation, customer/order mutation, or Theme code is included.
 
 ## Guarantees established here
 
@@ -40,8 +41,105 @@ npm start
 curl http://localhost:4100/health
 ```
 
-Tests use an in-memory repository so PostgreSQL and Shopify are not required.
+Tests use an in-memory repository and mocked Shopify transport, so PostgreSQL,
+Shopify credentials, and network access are not required.
 The HTTP server currently exposes only `GET /health`.
+
+On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`. In environments that
+block child processes, use `node --test --test-isolation=none` to run the tests.
+
+## Shopify configuration and manual connection check
+
+Set these variables only on the server (Render's GIRA Loyalty service):
+
+| Variable | Value |
+| --- | --- |
+| `SHOPIFY_SHOP_DOMAIN` | `giragiraglasses.myshopify.com` (verify before connecting) |
+| `SHOPIFY_API_VERSION` | `2026-07` (the only accepted version in this phase) |
+| `SHOPIFY_CLIENT_ID` | Client ID from the GIRA Loyalty app's Dev Dashboard |
+| `SHOPIFY_CLIENT_SECRET` | Client Secret from the same app; keep secret |
+
+`SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` are obsolete placeholders, not aliases.
+Remove them if populated: the checker rejects nonempty legacy variables even
+when the new names are present. No access-token or webhook-secret variable is
+needed. Never use `NEXT_PUBLIC_` variables for these credentials, commit a
+populated `.env`, or paste credentials into commands, logs, or review output.
+
+Render injects environment variables directly. The npm scripts do **not** load
+`.env` automatically. For an optional local `.env`, use Node's explicit loading:
+`node --env-file=.env scripts/shopify-check.js --dry-run`.
+
+Before a live check, confirm that the installed GIRA Loyalty app and GIRA store
+belong to the **same Shopify organization**. Installation alone does not prove
+Client Credentials Grant eligibility. Verify the canonical `myshopify.com`
+domain in Shopify admin; do not use a storefront custom domain.
+
+Run from `gira-loyalty/`. Preview works without credentials and makes no requests:
+
+```sh
+npm run shopify:check
+# Equivalent explicit preview:
+npm run shopify:check -- --dry-run
+```
+
+Review the displayed domain and version. Only after live API access is authorized,
+set the server-side credentials securely and explicitly confirm the same domain:
+
+```sh
+npm run shopify:check -- --confirm-shop giragiraglasses.myshopify.com
+```
+
+The live command exchanges credentials at `/admin/oauth/access_token` and sends
+exactly this query to `/admin/api/2026-07/graphql.json`:
+
+```graphql
+query ConnectionCheck {
+  shop { id name myshopifyDomain }
+}
+```
+
+It verifies the returned shop domain and API version. Success prints only
+`status`, the configured domain, and API version; failure prints a fixed error
+code and exits with status 1. It never prints the credentials, token, shop name,
+raw response, or raw exception. There is no generic query/mutation entry point.
+An app token may carry existing write scopes; the fixed checker does not use
+them or change app scopes. It does not read customers, orders, discounts or
+SPARKS, and does not connect to the database.
+
+Tokens are held only in process memory and reused until 60 seconds before their
+`expires_in` deadline. Concurrent calls share token acquisition. The next call
+renews an expired token; process restarts or separate CLI runs acquire a new one.
+There is no refresh-token storage or migration. HTTP 401 invalidates the rejected
+token and retries authentication/query once. Other failures are not retried
+automatically. Each HTTP request (including response-body reading) has a 10-second
+timeout, and redirects are rejected.
+
+Typical failure codes:
+
+| Code | Action |
+| --- | --- |
+| `INVALID_SHOP_DOMAIN`, `INVALID_API_VERSION`, `LEGACY_CONFIG_NOT_SUPPORTED`, `MISSING_OR_INVALID_CREDENTIALS` | Correct the server configuration without printing its secret values. |
+| `SHOP_CONFIRMATION_REQUIRED` | Preview and confirm the exact configured shop domain. |
+| `AUTHENTICATION_FAILED`, `TOKEN_REQUEST_FAILED` | Check credentials, installation and same-organization eligibility in Dev Dashboard. |
+| `TOKEN_REJECTED`, `ACCESS_DENIED` | Check app access/installation; no automatic scope changes occur. |
+| `RATE_LIMITED`, `SHOPIFY_UNAVAILABLE`, `REQUEST_TIMEOUT`, `NETWORK_ERROR` | Investigate availability and retry manually later. |
+| `SHOP_DOMAIN_MISMATCH`, `API_VERSION_MISMATCH` | Stop and verify the intended store/API version. |
+| `INVALID_TOKEN_RESPONSE`, `INVALID_RESPONSE`, `GRAPHQL_ERROR`, `API_REQUEST_FAILED`, `INTERNAL_ERROR` | Investigate safely without enabling raw request/response logging. |
+
+### Render operations
+
+Keep the existing service configuration, `DATABASE_URL`, `PORT`, and `LOG_LEVEL`.
+The existing start script remains `node src/server.js` (`npm start`). Add the four
+Shopify variables only after approval. **Never add `shopify:check` to Build Command,
+Start Command, predeploy hooks, health checks, CI, or automatic migrations.**
+The command is for an authorized operator's manual shell session only.
+`GET /health` remains independent of Shopify configuration and availability.
+
+Deploying, changing Render settings, pushing to GitHub, and performing a live
+connection check are separate operational steps requiring approval for this rollout.
+
+References: [Client Credentials Grant](https://shopify.dev/docs/apps/build/authentication-authorization/client-credentials-grant),
+[shop query](https://shopify.dev/docs/api/admin-graphql/2026-07/queries/shop).
 
 ## Tables
 

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check src/domain/wallet-service.js && node --check src/repositories/in-memory-wallet-repository.js && node --check src/repositories/postgres-wallet-repository.js",
+    "check": "node --check src/server.js && node --check src/domain/wallet-service.js && node --check src/repositories/in-memory-wallet-repository.js && node --check src/repositories/postgres-wallet-repository.js && node --check src/shopify/admin-client.js && node --check src/shopify/check-command.js && node --check scripts/shopify-check.js",
+    "shopify:check": "node scripts/shopify-check.js",
     "db:migrate": "node src/db/migrate.js"
   },
   "engines": {
