@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 const API_VERSION = '2026-07';
 const CONNECTION_QUERY = 'query ConnectionCheck { shop { id name myshopifyDomain } }';
 const REFRESH_MARGIN_MS = 60_000;
@@ -14,6 +16,17 @@ export class ShopifyConnectionError extends Error {
 const fail = (code) => { throw new ShopifyConnectionError(code); };
 
 const SHOP_ID_PATTERN = /^gid:\/\/shopify\/Shop\/[1-9][0-9]*$/;
+export const validRequestId = (value) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:-[0-9]{1,16})?$/i.test(value);
+
+function identitySnapshot(shop, expectedShopId) {
+  return {
+    identityAvailable: Boolean(shop && typeof shop === 'object' && !Array.isArray(shop)),
+    responseMatchesPrimary: shop?.myshopifyDomain === 'giragiraglasses.myshopify.com',
+    responseMatchesConnected: shop?.myshopifyDomain === 'utuidm-sx.myshopify.com',
+    shopIdMatchesExpected: typeof shop?.id === 'string' && shop.id === expectedShopId,
+    expectedMatchesIndependent: expectedShopId === 'gid://shopify/Shop/7368034643',
+  };
+}
 
 export function readExpectedShopId(env = process.env) {
   const value = env.SHOPIFY_EXPECTED_SHOP_ID;
@@ -74,7 +87,7 @@ export function createShopifyClient(env = process.env, {
   let cachedToken;
   let pendingToken;
 
-  async function request(url, options, stage) {
+  async function request(url, options, stage, context) {
     const signal = AbortSignal.timeout(timeoutMs);
     const diagnostic = {
       stage,
@@ -92,6 +105,12 @@ export function createShopifyClient(env = process.env, {
     };
     try {
       const response = await fetchImpl(url, { ...options, signal, redirect: 'error' });
+      if (stage === 'graphql') {
+        const requestId = response.headers.get('x-request-id');
+        context.requestIdPresent = requestId !== null;
+        context.requestIdValid = validRequestId(requestId);
+        context.requestId = context.requestIdValid ? requestId : null;
+      }
       diagnostic.responseReceived = true;
       diagnostic.httpStatus = response.status;
       diagnostic.redirected = response.redirected === true;
@@ -116,6 +135,10 @@ export function createShopifyClient(env = process.env, {
       try { body = await response.json(); } catch {
         fail(signal.aborted ? 'REQUEST_TIMEOUT' : 'INVALID_RESPONSE');
       }
+      if (stage === 'graphql') {
+        context.shop = body?.data?.shop;
+        emitIdentity('identity_parsed', context);
+      }
       diagnostic.jsonParsed = true;
       diagnostic.rootObject = Boolean(body && typeof body === 'object' && !Array.isArray(body));
       if (!body || typeof body !== 'object' || Array.isArray(body)) fail('INVALID_RESPONSE');
@@ -124,11 +147,24 @@ export function createShopifyClient(env = process.env, {
       if (error instanceof ShopifyConnectionError) throw error;
       fail(signal.aborted ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR');
     } finally {
-      onDiagnostic(Object.freeze(diagnostic));
+      onDiagnostic(Object.freeze({ ...diagnostic, ...correlation(context) }));
     }
   }
 
-  async function getToken() {
+  function correlation(context) {
+    return { diagnosticId: context.diagnosticId, attempt: context.attempt,
+      requestId: context.requestId, requestIdPresent: context.requestIdPresent,
+      requestIdValid: context.requestIdValid };
+  }
+
+  function emitIdentity(stage, context, accepted) {
+    onDiagnostic(Object.freeze({ stage, ...correlation(context),
+      ...identitySnapshot(context.shop, expectedShopId),
+      ...(accepted === undefined ? {} : { accepted }),
+    }));
+  }
+
+  async function getToken(context) {
     if (cachedToken && now() < cachedToken.refreshAt) return cachedToken;
     if (pendingToken) return pendingToken;
     pendingToken = (async () => {
@@ -137,7 +173,7 @@ export function createShopifyClient(env = process.env, {
         method: 'POST',
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ grant_type: 'client_credentials', client_id: clientId, client_secret: clientSecret }),
-      }, 'token');
+      }, 'token', context);
       if (typeof body.access_token !== 'string' || !body.access_token ||
           /\s/.test(body.access_token) || !Number.isSafeInteger(body.expires_in) ||
           body.expires_in <= REFRESH_MARGIN_MS / 1000 || body.expires_in > 86_400) {
@@ -151,16 +187,20 @@ export function createShopifyClient(env = process.env, {
     try { return await pendingToken; } finally { pendingToken = undefined; }
   }
 
-  async function checkConnection() {
+  async function checkConnection({ diagnosticId = randomUUID() } = {}) {
+    const context = { diagnosticId, attempt: 0, requestId: null, requestIdPresent: false, requestIdValid: false, shop: undefined };
+    let accepted = false;
+    try {
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const token = await getToken();
+      Object.assign(context, { attempt: attempt + 1, requestId: null, requestIdPresent: false, requestIdValid: false, shop: undefined });
+      const token = await getToken(context);
       let body;
       try {
         body = await request(`${origin}/admin/api/${apiVersion}/graphql.json`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'X-Shopify-Access-Token': token.value },
           body: JSON.stringify({ query: CONNECTION_QUERY }),
-        }, 'graphql');
+        }, 'graphql', context);
       } catch (error) {
         if (error.code === 'TOKEN_REJECTED') {
           // A late 401 must not invalidate a newer token acquired by another call.
@@ -173,6 +213,7 @@ export function createShopifyClient(env = process.env, {
       const domain = typeof responseShop?.myshopifyDomain === 'string' ? responseShop.myshopifyDomain : '';
       onDiagnostic(Object.freeze({
         stage: 'graphql_structure',
+        ...correlation(context),
         dataObject: Boolean(body.data && typeof body.data === 'object' && !Array.isArray(body.data)),
         shopObject: Boolean(responseShop && typeof responseShop === 'object' && !Array.isArray(responseShop)),
         idString: typeof responseShop?.id === 'string',
@@ -197,10 +238,16 @@ export function createShopifyClient(env = process.env, {
         }
       }
       const shop = body.data?.shop;
+      context.shop = shop;
+      emitIdentity('identity_before_validation', context);
       if (!shop || typeof shop.id !== 'string' || !shop.id.startsWith('gid://shopify/Shop/') ||
           typeof shop.name !== 'string' || typeof shop.myshopifyDomain !== 'string') fail('INVALID_RESPONSE');
       verifyShopIdentity(shop, expectedShopId);
+      accepted = true;
       return { id: shop.id, name: shop.name, myshopifyDomain: shop.myshopifyDomain };
+    }
+    } finally {
+      emitIdentity('identity_final', context, accepted);
     }
   }
 

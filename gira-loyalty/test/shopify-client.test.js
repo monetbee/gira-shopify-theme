@@ -16,6 +16,72 @@ const tokenResponse = (token = 'fake-token') => response({ access_token: token, 
 const shopResponse = () => response({ data: { shop } });
 const rejectsCode = (fn, code) => assert.rejects(fn, (error) => error.code === code && error.message === code && !error.cause);
 
+test('correlation links three identity stages and final output without exposing response fields', async () => {
+  const runIds = new Set();
+  for (const mismatch of [false, true]) {
+    const lines = [];
+    const requestId = '12345678-1234-1234-1234-123456789abc-1728000000';
+    const config = { ...env, SHOPIFY_EXPECTED_SHOP_ID: 'gid://shopify/Shop/7368034643' };
+    let calls = 0;
+    const code = await runShopifyCheck({ env: config, args: ['--confirm-shop', config.SHOPIFY_SHOP_DOMAIN],
+      output: s => lines.push(JSON.parse(s)), errorOutput: s => lines.push(JSON.parse(s)),
+      clientFactory: (e, options) => createShopifyClient(e, { ...options, fetchImpl: async url => {
+        calls++;
+        if (url.endsWith('/access_token')) return tokenResponse();
+        const result = response({ data: { shop: { ...shop, id: mismatch ? shop.id : config.SHOPIFY_EXPECTED_SHOP_ID,
+          myshopifyDomain: mismatch ? 'untrusted.myshopify.com' : 'utuidm-sx.myshopify.com' } } });
+        result.headers.set('x-request-id', requestId);
+        return result;
+      } }),
+    });
+    assert.equal(code, mismatch ? 1 : 0);
+    assert.equal(calls, 2);
+    assert.equal(new Set(lines.map(line => line.diagnosticId)).size, 1);
+    runIds.add(lines[0].diagnosticId);
+    const phases = lines.filter(line => line.diagnostic?.stage.startsWith('identity_'));
+    assert.deepEqual(phases.map(line => line.diagnostic.stage), ['identity_parsed', 'identity_before_validation', 'identity_final']);
+    for (const line of phases) {
+      assert.equal(line.attempt, 1);
+      assert.equal(line.requestId, requestId);
+      assert.equal(line.diagnostic.expectedMatchesIndependent, true);
+      assert.equal(line.diagnostic.shopIdMatchesExpected, !mismatch);
+      assert.equal(line.diagnostic.responseMatchesConnected, !mismatch);
+    }
+    assert.equal(phases.at(-1).diagnostic.accepted, !mismatch);
+    assert.equal(lines.at(-1).requestId, requestId);
+    for (const value of [config.SHOPIFY_EXPECTED_SHOP_ID, shop.id, 'untrusted.myshopify.com', 'utuidm-sx.myshopify.com', 'fake-token', 'fake-client-secret']) {
+      assert.ok(!JSON.stringify(lines).includes(value));
+    }
+  }
+  assert.equal(runIds.size, 2);
+});
+
+test('retry correlation distinguishes attempts and rejects malformed request IDs', async () => {
+  for (const header of [null, 'secret@example.com', 'a'.repeat(500), '12345678-1234-1234-1234-123456789abc,other']) {
+    const lines = [];
+    let queries = 0;
+    let grants = 0;
+    const code = await runShopifyCheck({ env, args: ['--confirm-shop', env.SHOPIFY_SHOP_DOMAIN],
+      output: s => lines.push(JSON.parse(s)), errorOutput: s => lines.push(JSON.parse(s)),
+      clientFactory: (e, options) => createShopifyClient(e, { ...options, fetchImpl: async url => {
+        if (url.endsWith('/access_token')) { grants++; return tokenResponse(); }
+        queries++;
+        const result = queries === 1 ? response({}, 401) : shopResponse();
+        if (header !== null) result.headers.set('x-request-id', header);
+        return result;
+      } }),
+    });
+    assert.equal(code, 0);
+    assert.equal(queries, 2);
+    assert.equal(grants, 2);
+    assert.deepEqual(lines.filter(line => line.diagnostic?.stage === 'graphql').map(line => line.attempt), [1, 2]);
+    assert.ok(lines.every(line => line.requestId === null));
+    assert.equal(lines.at(-1).attempt, 2);
+    assert.equal(lines.find(line => line.diagnostic?.stage === 'identity_final').diagnostic.expectedMatchesIndependent, false);
+    if (header) assert.ok(!JSON.stringify(lines).includes(header));
+  }
+});
+
 test('transport diagnostics redact payloads and preserve exact identity checks', async () => {
   for (const mode of ['success', 'domain', 'id', 'graphql', 'invalid-json', 'network', 'unauthorized']) {
     const lines = [];

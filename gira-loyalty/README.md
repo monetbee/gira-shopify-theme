@@ -140,6 +140,41 @@ Only allowlisted boolean/null fields, a validated HTTP status and fixed stage la
 are logged; no URLs, header dumps, bodies, error messages, IDs or personal fields
 are included. No new Render variables or command-line flags are required.
 
+### Correlating a check with Shopify's request log
+
+Every command invocation generates a random `diagnosticId`, included on preview,
+diagnostic and final lines. `attempt` is 1 for the first check and 2 for the existing
+401 retry (0 before any attempt). The same run ID is kept across the retry.
+Each GraphQL response's `X-Request-ID` is exposed as `requestId` only if it matches
+the bounded UUID-shaped format: hexadecimal 8-4-4-4-12 groups, optionally followed
+by a hyphen and 1–16 decimal digits. Missing or unrecognized formats produce null;
+`requestIdPresent` and `requestIdValid` distinguish those cases. No token-response
+request ID, other headers or raw rejected values are printed. An unrecognized
+format does not change the identity verdict. This is a conservative output
+allowlist, not a guarantee of all future Shopify Request ID formats.
+
+Use the exact `requestId` to locate the same ConnectionCheck in Shopify's logs,
+not the operation name alone. Correlated identity stages are:
+
+1. `identity_parsed`: immediately after GraphQL JSON parsing.
+2. `identity_before_validation`: immediately before response/identity validation.
+3. `identity_final`: after the client's final outcome, with `accepted`.
+
+Each stage repeats only boolean matches against the expected ID and the two
+approved domains. `expectedMatchesIndependent` compares the configured expected
+ID against the independently confirmed GIRA GID `gid://shopify/Shop/7368034643`.
+That flag is diagnostic only; it does not replace or relax the configured exact
+identity checks. `identityAvailable: false` indicates no shop object to compare.
+Transport/parse failures or GraphQL errors can skip stages that were never reached;
+the final stage still records failure. The final command result also includes the
+run ID, last attempt and validated Request ID. Final exit status remains authoritative.
+Token acquisition shared by concurrent client calls is logged under the initiating
+call; each GraphQL call and its identity stages retain their own correlation context.
+
+No additional API requests, response persistence, raw Shop IDs/domains, credentials,
+tokens or personal fields are introduced by correlation. Request IDs are the sole
+allowlisted response-header values printed for matching Shopify's request log.
+
 Live success/failure never prints the configured or returned IDs/domains,
 credentials, token, shop name,
 raw response, or raw exception. There is no generic query/mutation entry point.
