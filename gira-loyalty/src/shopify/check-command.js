@@ -19,7 +19,27 @@ export async function runShopifyCheck({
       throw new ShopifyConnectionError('SHOP_CONFIRMATION_REQUIRED');
     }
     const expectedShopId = readExpectedShopId(env);
-    const shop = await clientFactory(env).checkConnection();
+    const onDiagnostic = (event) => {
+      // Rebuild from an explicit allowlist: never serialize a transport object.
+      if (!['token', 'graphql', 'graphql_structure'].includes(event?.stage)) return;
+      const diagnostic = { stage: event.stage };
+      for (const key of [
+        'requestHostMatches', 'requestHttps', 'responseReceived', 'responseHostMatches',
+        'responseHttps', 'redirected', 'contentTypeJson', 'apiVersionMatches',
+        'jsonParsed', 'rootObject', 'dataObject', 'shopObject', 'idString', 'nameString',
+        'domainString', 'errorsPresent', 'errorsArray', 'hasGraphqlErrors',
+        'domainMatchesPrimaryAfterTrim', 'domainMatchesConnectedAfterTrim',
+        'domainMatchesPrimaryAfterTrimLowercase', 'domainMatchesConnectedAfterTrimLowercase',
+        'idMatchesAfterTrim',
+      ]) {
+        if (Object.hasOwn(event, key)) diagnostic[key] = typeof event[key] === 'boolean' ? event[key] : null;
+      }
+      if (Object.hasOwn(event, 'httpStatus')) {
+        diagnostic.httpStatus = Number.isInteger(event.httpStatus) && event.httpStatus >= 100 && event.httpStatus <= 599 ? event.httpStatus : null;
+      }
+      output(JSON.stringify({ status: 'diagnostic', diagnostic }));
+    };
+    const shop = await clientFactory(env, { onDiagnostic }).checkConnection();
     const diagnostics = verifyShopIdentity(shop, expectedShopId);
     // Do not print the response body or remotely controlled shop name.
     output(JSON.stringify({ status: 'connected', diagnostics }));

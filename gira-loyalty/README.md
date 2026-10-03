@@ -121,6 +121,25 @@ These refer to the two fixed domains above, not a dynamically discovered domain 
 Preflight or transport failures have no API identity diagnostics because no
 validated shop response is available. The dry run retains its configured-host
 preview and adds an expected-ID presence flag, without exposing the ID.
+
+Live checks also emit JSON lines with `status: diagnostic` before their final
+`connected` or `error` result. These describe each actual token/GraphQL request
+and the parsed GraphQL structure; they make no additional requests. Cached tokens
+produce no token-request event; the existing single 401 retry may produce another
+pair of request events. Consumers must use the final result and process exit code,
+not treat a diagnostic line as success.
+
+Transport diagnostics include fixed stage names, HTTP status, HTTPS/host equality,
+redirect status, JSON content-type/parse checks and API-version equality. A missing
+response URL or unavailable response metadata is `null` (unknown), not a match.
+Structure diagnostics contain presence/type checks and GraphQL error presence.
+Trim/lowercase comparison flags help identify spelling differences only: they
+never normalize the identity used for acceptance. Exact ID and domain validation,
+redirect rejection, authentication, token caching and the fixed query are unchanged.
+Only allowlisted boolean/null fields, a validated HTTP status and fixed stage labels
+are logged; no URLs, header dumps, bodies, error messages, IDs or personal fields
+are included. No new Render variables or command-line flags are required.
+
 Live success/failure never prints the configured or returned IDs/domains,
 credentials, token, shop name,
 raw response, or raw exception. There is no generic query/mutation entry point.

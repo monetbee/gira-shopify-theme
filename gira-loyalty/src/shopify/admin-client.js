@@ -66,6 +66,7 @@ export function createShopifyClient(env = process.env, {
   fetchImpl = globalThis.fetch,
   now = Date.now,
   timeoutMs = 10_000,
+  onDiagnostic = () => {},
 } = {}) {
   const { shopDomain, apiVersion, clientId, clientSecret } = readShopifyConfig(env);
   const expectedShopId = readExpectedShopId(env);
@@ -75,8 +76,32 @@ export function createShopifyClient(env = process.env, {
 
   async function request(url, options, stage) {
     const signal = AbortSignal.timeout(timeoutMs);
+    const diagnostic = {
+      stage,
+      requestHostMatches: new URL(url).hostname === shopDomain,
+      requestHttps: new URL(url).protocol === 'https:',
+      responseReceived: false,
+      responseHostMatches: null,
+      responseHttps: null,
+      redirected: null,
+      httpStatus: null,
+      contentTypeJson: null,
+      apiVersionMatches: null,
+      jsonParsed: false,
+      rootObject: null,
+    };
     try {
       const response = await fetchImpl(url, { ...options, signal, redirect: 'error' });
+      diagnostic.responseReceived = true;
+      diagnostic.httpStatus = response.status;
+      diagnostic.redirected = response.redirected === true;
+      diagnostic.contentTypeJson = /^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type') ?? '');
+      if (stage === 'graphql') diagnostic.apiVersionMatches = response.headers.get('x-shopify-api-version') === apiVersion;
+      try {
+        const responseUrl = new URL(response.url);
+        diagnostic.responseHostMatches = responseUrl.hostname === shopDomain;
+        diagnostic.responseHttps = responseUrl.protocol === 'https:';
+      } catch { /* A missing response URL is unknown, never assumed to match. */ }
       if (!response.ok) {
         if (response.status === 401) fail(stage === 'token' ? 'AUTHENTICATION_FAILED' : 'TOKEN_REJECTED');
         if (response.status === 403) fail('ACCESS_DENIED');
@@ -91,11 +116,15 @@ export function createShopifyClient(env = process.env, {
       try { body = await response.json(); } catch {
         fail(signal.aborted ? 'REQUEST_TIMEOUT' : 'INVALID_RESPONSE');
       }
+      diagnostic.jsonParsed = true;
+      diagnostic.rootObject = Boolean(body && typeof body === 'object' && !Array.isArray(body));
       if (!body || typeof body !== 'object' || Array.isArray(body)) fail('INVALID_RESPONSE');
       return body;
     } catch (error) {
       if (error instanceof ShopifyConnectionError) throw error;
       fail(signal.aborted ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR');
+    } finally {
+      onDiagnostic(Object.freeze(diagnostic));
     }
   }
 
@@ -140,6 +169,24 @@ export function createShopifyClient(env = process.env, {
         }
         throw error;
       }
+      const responseShop = body.data?.shop;
+      const domain = typeof responseShop?.myshopifyDomain === 'string' ? responseShop.myshopifyDomain : '';
+      onDiagnostic(Object.freeze({
+        stage: 'graphql_structure',
+        dataObject: Boolean(body.data && typeof body.data === 'object' && !Array.isArray(body.data)),
+        shopObject: Boolean(responseShop && typeof responseShop === 'object' && !Array.isArray(responseShop)),
+        idString: typeof responseShop?.id === 'string',
+        nameString: typeof responseShop?.name === 'string',
+        domainString: typeof responseShop?.myshopifyDomain === 'string',
+        errorsPresent: body.errors !== undefined,
+        errorsArray: Array.isArray(body.errors),
+        hasGraphqlErrors: body.errors !== undefined && (!Array.isArray(body.errors) || body.errors.length > 0),
+        domainMatchesPrimaryAfterTrim: domain.trim() === 'giragiraglasses.myshopify.com',
+        domainMatchesConnectedAfterTrim: domain.trim() === 'utuidm-sx.myshopify.com',
+        domainMatchesPrimaryAfterTrimLowercase: domain.trim().toLowerCase() === 'giragiraglasses.myshopify.com',
+        domainMatchesConnectedAfterTrimLowercase: domain.trim().toLowerCase() === 'utuidm-sx.myshopify.com',
+        idMatchesAfterTrim: typeof responseShop?.id === 'string' && responseShop.id.trim() === expectedShopId,
+      }));
       if (body.errors !== undefined) {
         if (!Array.isArray(body.errors)) fail('INVALID_RESPONSE');
         if (body.errors.length) {

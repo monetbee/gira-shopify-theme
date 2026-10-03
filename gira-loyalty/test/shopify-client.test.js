@@ -16,6 +16,69 @@ const tokenResponse = (token = 'fake-token') => response({ access_token: token, 
 const shopResponse = () => response({ data: { shop } });
 const rejectsCode = (fn, code) => assert.rejects(fn, (error) => error.code === code && error.message === code && !error.cause);
 
+test('transport diagnostics redact payloads and preserve exact identity checks', async () => {
+  for (const mode of ['success', 'domain', 'id', 'graphql', 'invalid-json', 'network', 'unauthorized']) {
+    const lines = [];
+    let calls = 0;
+    const exitCode = await runShopifyCheck({ env, args: ['--confirm-shop', env.SHOPIFY_SHOP_DOMAIN],
+      output: (line) => lines.push(JSON.parse(line)), errorOutput: (line) => lines.push(JSON.parse(line)),
+      clientFactory: (config, diagnosticOptions) => createShopifyClient(config, { ...diagnosticOptions,
+        fetchImpl: async (url, options) => {
+          calls++;
+          assert.equal(options.redirect, 'error');
+          if (mode === 'network') throw new Error('private-person@example.com fake-client-secret');
+          const token = url.endsWith('/access_token');
+          if (!token) assert.deepEqual(JSON.parse(options.body), { query: 'query ConnectionCheck { shop { id name myshopifyDomain } }' });
+          const body = token ? { access_token: 'fake-token', expires_in: 86399 }
+            : mode === 'graphql' ? { errors: [{ message: 'private-person@example.com' }] }
+            : { data: { shop: { ...shop, name: 'private-person@example.com',
+              id: mode === 'id' ? 'gid://shopify/Shop/2' : shop.id,
+              myshopifyDomain: mode === 'domain' ? ' UTUIDM-SX.MYSHOPIFY.COM ' : 'utuidm-sx.myshopify.com' } } };
+          const result = new Response(!token && mode === 'invalid-json' ? 'private-person@example.com' : JSON.stringify(body), {
+            status: mode === 'unauthorized' ? 401 : 200,
+            headers: { 'content-type': 'application/json', 'x-shopify-api-version': '2026-07' },
+          });
+          Object.defineProperty(result, 'url', { value: url });
+          return result;
+        },
+      }),
+    });
+    assert.equal(exitCode, mode === 'success' ? 0 : 1);
+    const final = lines.at(-1);
+    const expectedErrors = { domain: 'SHOP_DOMAIN_MISMATCH', id: 'SHOP_ID_MISMATCH', graphql: 'GRAPHQL_ERROR', 'invalid-json': 'INVALID_RESPONSE', network: 'NETWORK_ERROR', unauthorized: 'AUTHENTICATION_FAILED' };
+    if (mode !== 'success') assert.equal(final.code, expectedErrors[mode]);
+    assert.equal(calls, ['network', 'unauthorized'].includes(mode) ? 1 : 2);
+    const transport = lines[0].diagnostic;
+    assert.equal(transport.requestHostMatches, true);
+    assert.equal(transport.responseHostMatches, mode === 'network' ? null : true);
+    if (mode === 'domain') {
+      const structure = lines.find((line) => line.diagnostic?.stage === 'graphql_structure').diagnostic;
+      assert.equal(structure.domainMatchesConnectedAfterTrimLowercase, true);
+      assert.equal(final.diagnostics.responseMatchesConnected, false);
+    }
+    for (const secret of ['fake-client-secret', 'fake-client-id', 'fake-token', 'private-person@example.com', shop.id, 'gid://shopify/Shop/2', env.SHOPIFY_SHOP_DOMAIN, 'utuidm-sx.myshopify.com']) {
+      assert.ok(!JSON.stringify(lines).includes(secret));
+    }
+  }
+});
+
+test('diagnostic output allowlist rejects unexpected values and raw objects', async () => {
+  const lines = [];
+  const code = await runShopifyCheck({ env, args: ['--confirm-shop', env.SHOPIFY_SHOP_DOMAIN],
+    output: (line) => lines.push(JSON.parse(line)), errorOutput: (line) => lines.push(JSON.parse(line)),
+    clientFactory: (_config, { onDiagnostic }) => ({ checkConnection: async () => {
+      onDiagnostic({ stage: 'graphql', requestHostMatches: 'secret-sentinel', httpStatus: 99999,
+        rawResponse: 'secret-sentinel', access_token: 'secret-sentinel' });
+      onDiagnostic({ stage: 'secret-sentinel' });
+      return shop;
+    } }),
+  });
+  assert.equal(code, 0);
+  assert.equal(lines.length, 2);
+  assert.deepEqual(lines[0].diagnostic, { stage: 'graphql', requestHostMatches: null, httpStatus: null });
+  assert.ok(!JSON.stringify(lines).includes('secret-sentinel'));
+});
+
 test('identity diagnostics accept only the two approved domains with the pinned Shop ID', async () => {
   for (const domain of ['giragiraglasses.myshopify.com', 'utuidm-sx.myshopify.com', 'unknown.myshopify.com']) {
     for (const id of ['gid://shopify/Shop/1', 'gid://shopify/Shop/2', 'gid://shopify/Shop/not-an-id']) {
