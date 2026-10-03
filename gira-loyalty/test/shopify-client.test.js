@@ -6,6 +6,7 @@ import { runShopifyCheck } from '../src/shopify/check-command.js';
 const env = {
   SHOPIFY_SHOP_DOMAIN: 'giragiraglasses.myshopify.com', SHOPIFY_API_VERSION: '2026-07',
   SHOPIFY_CLIENT_ID: 'fake-client-id', SHOPIFY_CLIENT_SECRET: 'fake-client-secret',
+  SHOPIFY_EXPECTED_SHOP_ID: 'gid://shopify/Shop/1',
 };
 const shop = { id: 'gid://shopify/Shop/1', name: 'GIRA', myshopifyDomain: env.SHOPIFY_SHOP_DOMAIN };
 const response = (body, status = 200, version = '2026-07') => new Response(JSON.stringify(body), {
@@ -14,6 +15,53 @@ const response = (body, status = 200, version = '2026-07') => new Response(JSON.
 const tokenResponse = (token = 'fake-token') => response({ access_token: token, expires_in: 86399 });
 const shopResponse = () => response({ data: { shop } });
 const rejectsCode = (fn, code) => assert.rejects(fn, (error) => error.code === code && error.message === code && !error.cause);
+
+test('identity diagnostics accept only the two approved domains with the pinned Shop ID', async () => {
+  for (const domain of ['giragiraglasses.myshopify.com', 'utuidm-sx.myshopify.com', 'unknown.myshopify.com']) {
+    for (const id of ['gid://shopify/Shop/1', 'gid://shopify/Shop/2', 'gid://shopify/Shop/not-an-id']) {
+      const lines = [];
+      const urls = [];
+      const exitCode = await runShopifyCheck({ env, args: ['--confirm-shop', env.SHOPIFY_SHOP_DOMAIN],
+        output: (line) => lines.push(line), errorOutput: (line) => lines.push(line),
+        clientFactory: (config) => createShopifyClient(config, { fetchImpl: async (url, options) => {
+          urls.push(url);
+          assert.equal(options.redirect, 'error');
+          return url.endsWith('/access_token') ? tokenResponse() : response({ data: { shop: { ...shop, id, myshopifyDomain: domain } } });
+        } }),
+      });
+      const result = JSON.parse(lines[0]);
+      const allowed = domain !== 'unknown.myshopify.com';
+      assert.equal(exitCode, allowed && id === shop.id ? 0 : 1);
+      assert.equal(result.diagnostics.responseMatchesPrimary, domain === 'giragiraglasses.myshopify.com');
+      assert.equal(result.diagnostics.responseMatchesConnected, domain === 'utuidm-sx.myshopify.com');
+      assert.equal(result.diagnostics.shopIdMatchesExpected, id === shop.id);
+      if (exitCode) assert.equal(result.code, id.endsWith('not-an-id') ? 'INVALID_RESPONSE' : !allowed ? 'SHOP_DOMAIN_MISMATCH' : 'SHOP_ID_MISMATCH');
+      assert.equal(urls.length, 2);
+      assert.ok(urls.every((url) => new URL(url).hostname === env.SHOPIFY_SHOP_DOMAIN));
+      for (const value of [id, domain, env.SHOPIFY_CLIENT_ID, env.SHOPIFY_CLIENT_SECRET, 'fake-token']) {
+        assert.ok(!lines.join('').includes(value));
+      }
+    }
+  }
+});
+
+test('missing or invalid expected ID prevents client creation and network; dry run is not connected', async () => {
+  for (const value of [undefined, '', '1', 'gid://shopify/Shop/0', 'gid://shopify/Shop/1 ', 'gid://shopify/Customer/1']) {
+    const config = { ...env, SHOPIFY_EXPECTED_SHOP_ID: value };
+    const expectedCode = value === undefined || value === '' ? 'MISSING_EXPECTED_SHOP_ID' : 'INVALID_EXPECTED_SHOP_ID';
+    let calls = 0;
+    assert.throws(() => createShopifyClient(config, { fetchImpl: async () => { calls++; } }), { code: expectedCode });
+    const lines = [];
+    const options = { env: config, output: (line) => lines.push(line), errorOutput: (line) => lines.push(line),
+      clientFactory: () => { calls++; throw new Error('must not run'); } };
+    assert.equal(await runShopifyCheck({ ...options, args: ['--confirm-shop', config.SHOPIFY_SHOP_DOMAIN] }), 1);
+    assert.equal(JSON.parse(lines[0]).code, expectedCode);
+    assert.equal(await runShopifyCheck(options), 0);
+    assert.equal(JSON.parse(lines[1]).status, 'dry_run');
+    assert.equal(JSON.parse(lines[1]).networkRequests, 0);
+    assert.equal(calls, 0);
+  }
+});
 
 test('config accepts only canonical domains, pinned version and new credentials', () => {
   assert.equal(readShopifyConfig(env).shopDomain, env.SHOPIFY_SHOP_DOMAIN);

@@ -13,6 +13,38 @@ export class ShopifyConnectionError extends Error {
 
 const fail = (code) => { throw new ShopifyConnectionError(code); };
 
+const SHOP_ID_PATTERN = /^gid:\/\/shopify\/Shop\/[1-9][0-9]*$/;
+
+export function readExpectedShopId(env = process.env) {
+  const value = env.SHOPIFY_EXPECTED_SHOP_ID;
+  if (value === undefined || value === '') fail('MISSING_EXPECTED_SHOP_ID');
+  if (typeof value !== 'string' || !SHOP_ID_PATTERN.test(value)) fail('INVALID_EXPECTED_SHOP_ID');
+  return value;
+}
+
+// Fixed response allowlist; these domains never replace the configured request host.
+export function verifyShopIdentity(shop, expectedShopId) {
+  const diagnostics = {
+    responseMatchesPrimary: shop?.myshopifyDomain === 'giragiraglasses.myshopify.com',
+    responseMatchesConnected: shop?.myshopifyDomain === 'utuidm-sx.myshopify.com',
+    shopIdValid: typeof shop?.id === 'string' && SHOP_ID_PATTERN.test(shop.id),
+    expectedShopIdConfigured: typeof expectedShopId === 'string' && SHOP_ID_PATTERN.test(expectedShopId),
+    shopIdMatchesExpected: false,
+  };
+  diagnostics.shopIdMatchesExpected = diagnostics.shopIdValid && diagnostics.expectedShopIdConfigured && shop.id === expectedShopId;
+  let code;
+  if (!diagnostics.expectedShopIdConfigured) code = 'MISSING_EXPECTED_SHOP_ID';
+  else if (!diagnostics.shopIdValid) code = 'INVALID_RESPONSE';
+  else if (!diagnostics.responseMatchesPrimary && !diagnostics.responseMatchesConnected) code = 'SHOP_DOMAIN_MISMATCH';
+  else if (!diagnostics.shopIdMatchesExpected) code = 'SHOP_ID_MISMATCH';
+  if (code) {
+    const error = new ShopifyConnectionError(code);
+    error.diagnostics = Object.freeze(diagnostics);
+    throw error;
+  }
+  return diagnostics;
+}
+
 export function readShopifyConfig(env = process.env, { requireCredentials = true } = {}) {
   if (env.SHOPIFY_API_KEY || env.SHOPIFY_API_SECRET) fail('LEGACY_CONFIG_NOT_SUPPORTED');
   const shopDomain = env.SHOPIFY_SHOP_DOMAIN;
@@ -36,6 +68,7 @@ export function createShopifyClient(env = process.env, {
   timeoutMs = 10_000,
 } = {}) {
   const { shopDomain, apiVersion, clientId, clientSecret } = readShopifyConfig(env);
+  const expectedShopId = readExpectedShopId(env);
   const origin = `https://${shopDomain}`;
   let cachedToken;
   let pendingToken;
@@ -119,7 +152,7 @@ export function createShopifyClient(env = process.env, {
       const shop = body.data?.shop;
       if (!shop || typeof shop.id !== 'string' || !shop.id.startsWith('gid://shopify/Shop/') ||
           typeof shop.name !== 'string' || typeof shop.myshopifyDomain !== 'string') fail('INVALID_RESPONSE');
-      if (shop.myshopifyDomain !== shopDomain) fail('SHOP_DOMAIN_MISMATCH');
+      verifyShopIdentity(shop, expectedShopId);
       return { id: shop.id, name: shop.name, myshopifyDomain: shop.myshopifyDomain };
     }
   }

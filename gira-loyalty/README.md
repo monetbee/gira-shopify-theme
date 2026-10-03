@@ -58,6 +58,7 @@ Set these variables only on the server (Render's GIRA Loyalty service):
 | `SHOPIFY_API_VERSION` | `2026-07` (the only accepted version in this phase) |
 | `SHOPIFY_CLIENT_ID` | Client ID from the GIRA Loyalty app's Dev Dashboard |
 | `SHOPIFY_CLIENT_SECRET` | Client Secret from the same app; keep secret |
+| `SHOPIFY_EXPECTED_SHOP_ID` | Independently verified GIRA Shop GID, exactly `gid://shopify/Shop/<numeric-id>` |
 
 `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` are obsolete placeholders, not aliases.
 Remove them if populated: the checker rejects nonempty legacy variables even
@@ -98,9 +99,30 @@ query ConnectionCheck {
 }
 ```
 
-It verifies the returned shop domain and API version. Success prints only
-`status`, the configured domain, and API version; failure prints a fixed error
-code and exits with status 1. It never prints the credentials, token, shop name,
+It verifies the API version and requires BOTH an approved response domain and
+an exact match against the independently verified expected Shop ID. The fixed
+approved response domains are `giragiraglasses.myshopify.com` and
+`utuidm-sx.myshopify.com`; no wildcard or automatic domain enrollment is used.
+Neither response domain changes the request host: keep `SHOPIFY_SHOP_DOMAIN`
+as `giragiraglasses.myshopify.com`. CLI confirmation still checks that host.
+
+The expected ID must be verified independently by the operator against trusted
+GIRA store information before configuration. Do not copy an unverified mismatch
+response into the expected ID or use a domain/name as identity proof. This code
+checks the pinned value; it cannot attest how the operator verified it.
+Missing or malformed expected IDs stop a live check before any network request.
+A dry run can still preview configuration without an ID and never means connected.
+
+Success prints `status` and boolean identity diagnostics. Identity failures print
+a fixed error code plus the same boolean diagnostics and exit with status 1.
+Diagnostics are `responseMatchesPrimary`, `responseMatchesConnected`,
+`shopIdValid`, `expectedShopIdConfigured`, and `shopIdMatchesExpected`.
+These refer to the two fixed domains above, not a dynamically discovered domain role.
+Preflight or transport failures have no API identity diagnostics because no
+validated shop response is available. The dry run retains its configured-host
+preview and adds an expected-ID presence flag, without exposing the ID.
+Live success/failure never prints the configured or returned IDs/domains,
+credentials, token, shop name,
 raw response, or raw exception. There is no generic query/mutation entry point.
 An app token may carry existing write scopes; the fixed checker does not use
 them or change app scopes. It does not read customers, orders, discounts or
@@ -124,12 +146,14 @@ Typical failure codes:
 | `TOKEN_REJECTED`, `ACCESS_DENIED` | Check app access/installation; no automatic scope changes occur. |
 | `RATE_LIMITED`, `SHOPIFY_UNAVAILABLE`, `REQUEST_TIMEOUT`, `NETWORK_ERROR` | Investigate availability and retry manually later. |
 | `SHOP_DOMAIN_MISMATCH`, `API_VERSION_MISMATCH` | Stop and verify the intended store/API version. |
+| `MISSING_EXPECTED_SHOP_ID`, `INVALID_EXPECTED_SHOP_ID` | Independently verify the GIRA Shop ID and set its full GID; no live requests occur. |
+| `SHOP_ID_MISMATCH` | Stop: the response does not match the independently pinned store identity, even if the domain is approved. |
 | `INVALID_TOKEN_RESPONSE`, `INVALID_RESPONSE`, `GRAPHQL_ERROR`, `API_REQUEST_FAILED`, `INTERNAL_ERROR` | Investigate safely without enabling raw request/response logging. |
 
 ### Render operations
 
 Keep the existing service configuration, `DATABASE_URL`, `PORT`, and `LOG_LEVEL`.
-The existing start script remains `node src/server.js` (`npm start`). Add the four
+The existing start script remains `node src/server.js` (`npm start`). Add the five
 Shopify variables only after approval. **Never add `shopify:check` to Build Command,
 Start Command, predeploy hooks, health checks, CI, or automatic migrations.**
 The command is for an authorized operator's manual shell session only.
