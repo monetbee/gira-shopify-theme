@@ -507,3 +507,4 @@
     padding: 2.5rem 0;
   }
 }
+.gira-my-gira-grid--account-only { grid-template-columns:minmax(0,1fr); }

@@ -1,4 +1,7 @@
 (() => {
+  // Shopify's root preserves the active language/market URL prefix.
+  const shopRoot = window.Shopify?.routes?.root || '/';
+  const shopRoute = (path) => `${shopRoot.replace(/\/?$/, '/')}${path}`;
   document.addEventListener('click', (event) => {
     const toggle = event.target.closest('[data-gira-menu-toggle]');
     if (!toggle) return;
@@ -334,42 +337,61 @@
     });
   };
   const replaceCartSection = (html, selector) => {
-    if (!html) return;
+    if (!html) return false;
     const documentFragment = new DOMParser().parseFromString(html, 'text/html');
     const nextSection = documentFragment.querySelector(selector);
     const currentSection = document.querySelector(selector);
-    if (nextSection && currentSection) currentSection.replaceWith(nextSection);
+    if (!nextSection || !currentSection) return false;
+    currentSection.replaceWith(nextSection);
+    return true;
+  };
+  const setCartError = (message = '') => {
+    document.querySelectorAll('[data-gira-cart-error]').forEach((container) => {
+      container.textContent = message;
+      container.hidden = !message;
+    });
   };
   const setCartControlsDisabled = (disabled) => {
     document.querySelectorAll('[data-gira-cart-change]').forEach((control) => {
       control.disabled = disabled;
       control.setAttribute('aria-busy', String(disabled));
     });
+    document.querySelectorAll('[data-gira-checkout]').forEach((control) => {
+      control.setAttribute('aria-disabled', String(disabled));
+      control.setAttribute('aria-busy', String(disabled));
+    });
   };
   const renderCartSections = (sections) => {
-    if (!sections) return;
-    replaceCartSection(sections['gira-cart-drawer'], cartDrawerSelector);
+    if (!sections) return false;
+    const drawerUpdated = replaceCartSection(sections['gira-cart-drawer'], cartDrawerSelector);
+    let pageUpdated = true;
     if (document.querySelector('[data-gira-cart-page]')) {
-      replaceCartSection(sections['gira-main-cart'], '[data-gira-cart-page]');
+      pageUpdated = replaceCartSection(sections['gira-main-cart'], '[data-gira-cart-page]');
     }
+    return drawerUpdated && pageUpdated;
   };
   const refreshCart = async ({ openDrawer = false } = {}) => {
     const requests = [
-      fetch('/cart.js', { headers: { Accept: 'application/json' } }),
-      fetch('/?section_id=gira-cart-drawer'),
+      fetch(shopRoute('cart.js'), { headers: { Accept: 'application/json' } }),
+      fetch(`${shopRoute('')}?section_id=gira-cart-drawer`),
     ];
-    if (document.querySelector('[data-gira-cart-page]')) requests.push(fetch('/cart?section_id=gira-main-cart'));
+    if (document.querySelector('[data-gira-cart-page]')) requests.push(fetch(`${shopRoute('cart')}?section_id=gira-main-cart`));
     const responses = await Promise.all(requests);
     const [cartResponse, drawerResponse, pageResponse] = responses;
     if (!cartResponse.ok || !drawerResponse.ok || (pageResponse && !pageResponse.ok)) throw new Error('Unable to refresh cart');
     const cart = await cartResponse.json();
-    replaceCartSection(await drawerResponse.text(), cartDrawerSelector);
-    if (pageResponse) replaceCartSection(await pageResponse.text(), '[data-gira-cart-page]');
+    if (!replaceCartSection(await drawerResponse.text(), cartDrawerSelector)) throw new Error('Missing cart drawer section');
+    if (pageResponse && !replaceCartSection(await pageResponse.text(), '[data-gira-cart-page]')) throw new Error('Missing cart page section');
     updateCartCount(cart.item_count);
     if (openDrawer) setCartOpen(true);
   };
 
   document.addEventListener('click', (event) => {
+    const checkout = event.target.closest('[data-gira-checkout]');
+    if (checkout && (isCartUpdating || checkout.getAttribute('aria-disabled') === 'true')) {
+      event.preventDefault();
+      return;
+    }
     const cartToggle = event.target.closest('[data-gira-cart-toggle]');
     if (cartToggle) {
       setCartOpen(true);
@@ -388,25 +410,42 @@
     }
   });
   document.addEventListener('submit', async (event) => {
+    if (event.target.matches('[data-gira-checkout-form]') && isCartUpdating) {
+      event.preventDefault();
+      return;
+    }
     const productForm = event.target.closest('.gira-product-form');
     if (!productForm) return;
     event.preventDefault();
+    if (isCartUpdating) return;
+    isCartUpdating = true;
+    setCartControlsDisabled(true);
     const submit = productForm.querySelector('[data-gira-add-to-cart]');
+    const errorContainer = productForm.querySelector('.gira-product-form-errors');
+    if (errorContainer) errorContainer.textContent = '';
+    setCartError();
+    let itemAdded = false;
     if (submit) {
       submit.disabled = true;
       submit.textContent = 'ADDING…';
     }
     try {
-      const response = await fetch(productForm.action, { method: 'POST', body: new FormData(productForm), headers: { Accept: 'application/json' } });
+      const response = await fetch(shopRoute('cart/add.js'), { method: 'POST', body: new FormData(productForm), headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error('Unable to add item');
+      itemAdded = true;
       await refreshCart({ openDrawer: true });
     } catch (error) {
-      const errorContainer = productForm.querySelector('.gira-product-form-errors');
-      if (errorContainer) errorContainer.textContent = 'Unable to add this item. Please try again.';
+      if (errorContainer) errorContainer.textContent = itemAdded
+        ? 'Item added, but the cart display could not refresh. Open the cart page before adding again. / 商品は追加済みです。再度追加せず、カートページをご確認ください。'
+        : 'Unable to confirm the addition. Check your cart before trying again. / 追加を確認できませんでした。再試行する前にカートをご確認ください。';
     } finally {
+      isCartUpdating = false;
+      setCartControlsDisabled(false);
       if (submit) {
-        submit.disabled = false;
-        submit.textContent = 'ADD TO CART';
+        const variantSelect = productForm.querySelector('[data-gira-variant-select]');
+        const available = !variantSelect || variantSelect.options[variantSelect.selectedIndex]?.dataset.available === 'true';
+        submit.disabled = !available;
+        submit.textContent = available ? 'ADD TO CART' : 'SOLD OUT';
       }
     }
   });
@@ -420,9 +459,10 @@
     if (!lineKey || Number.isNaN(quantity)) return;
     const wasDrawerOpen = document.querySelector(cartDrawerSelector)?.classList.contains(cartOpenClass);
     isCartUpdating = true;
+    setCartError();
     setCartControlsDisabled(true);
     try {
-      const response = await fetch('/cart/change.js', {
+      const response = await fetch(shopRoute('cart/change.js'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
@@ -433,17 +473,22 @@
         }),
       });
       if (!response.ok) {
-        const detail = await response.text();
-        throw new Error(`Unable to update cart (${response.status}): ${detail}`);
+        throw new Error('Unable to update cart');
       }
       const cart = await response.json();
-      renderCartSections(cart.sections);
+      if (!renderCartSections(cart.sections)) await refreshCart();
       updateCartCount(cart.item_count);
+      const updatedItem = cart.items?.find((item) => item.key === lineKey);
+      if ((updatedItem?.quantity || 0) !== quantity) {
+        setCartError('Quantity adjusted to available stock. Please check your bag. / 在庫に合わせて数量が変更されました。カートをご確認ください。');
+      }
       if (wasDrawerOpen) setCartOpen(true);
     } catch (error) {
-      setCartControlsDisabled(false);
+      // A timeout may follow a successful mutation: never retry a write here.
+      setCartError('Unable to confirm the quantity change. Reload the cart and check quantities before checkout. / 数量変更を確認できませんでした。カートを再読み込みして数量をご確認ください。');
     } finally {
       isCartUpdating = false;
+      setCartControlsDisabled(false);
     }
   });
 })();

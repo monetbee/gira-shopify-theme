@@ -1,5 +1,7 @@
 {% if customer %}
-  {% assign sparks_balance = customer.metafields.gira_loyalty.balance.value | default: 0 %}
+  {% if settings.gira_sparks_enabled %}
+    {% assign sparks_balance = customer.metafields.gira_loyalty.balance.value | default: 0 %}
+  {% endif %}
   {% assign account_url_parts = routes.account_url | split: '?' %}
   {% assign account_url_base = account_url_parts | first %}
   {% assign account_url_query = account_url_parts | last %}
@@ -8,11 +10,11 @@
       <p class="gira-my-gira-eyebrow">MY GIRA</p>
       <h1>WELCOME{% if customer.first_name != blank %}, {{ customer.first_name | upcase }}{% endif %}.</h1>
       <p class="gira-my-gira-intro">YOUR WORLD. YOUR SPARK.</p>
-      <section class="gira-my-gira-grid" aria-label="GIRA membership overview">
-        <article><p>SPARKS ⚡</p><strong>{{ sparks_balance }}</strong><span>AVAILABLE BALANCE</span></article>
+      <section class="gira-my-gira-grid{% unless settings.gira_sparks_enabled %} gira-my-gira-grid--account-only{% endunless %}" aria-label="GIRA membership overview">
+        {% if settings.gira_sparks_enabled %}<article><p>SPARKS ⚡</p><strong>{{ sparks_balance }}</strong><span>AVAILABLE BALANCE</span></article>{% endif %}
         <article><p>GIRA CLUB</p><strong>MEMBER</strong><span>FREE TO JOIN</span></article>
       </section>
-      <section class="gira-my-gira-benefits"><p>GIRA CLUB</p><h2>YOUR MEMBERSHIP / BENEFITS</h2><ul><li>Purchase to earn SPARKS</li><li>Use SPARKS for future rewards</li><li>Keep your GIRA order history close</li></ul></section>
+      <section class="gira-my-gira-benefits"><p>GIRA CLUB</p><h2>YOUR MEMBERSHIP / BENEFITS</h2><ul>{% if settings.gira_sparks_enabled %}<li>Purchase to earn SPARKS</li><li>Use SPARKS for future rewards</li>{% else %}<li>Manage your profile</li><li>Manage your delivery addresses</li>{% endif %}<li>Keep your GIRA order history close</li></ul></section>
       <section class="gira-my-gira-orders" aria-labelledby="gira-my-gira-orders-title">
         <div class="gira-my-gira-orders__heading"><p>ORDER HISTORY</p><h2 id="gira-my-gira-orders-title">RECENT ORDERS</h2></div>
         {% if customer.orders_count > 0 %}
@@ -35,7 +37,7 @@
 {% else %}
   <main class="gira-my-gira-page">
     <div class="gira-container gira-my-gira-container gira-my-gira-guest">
-      <p class="gira-my-gira-eyebrow">MY GIRA</p><h1>YOUR WORLD.<br>YOUR SPARK.</h1><p>ログインすると、GIRA CLUBの情報とSPARKSを確認できます。</p><a class="gira-my-gira-login" href="/customer_authentication/login?return_to=%2Fpages%2Fmy-gira">LOG IN / JOIN FREE</a><a class="gira-my-gira-benefits-link" href="/pages/gira-club">CLUB BENEFITS →</a>
+      <p class="gira-my-gira-eyebrow">MY GIRA</p><h1>YOUR WORLD.<br>YOUR SPARK.</h1><p>{% if settings.gira_sparks_enabled %}ログインすると、GIRA CLUBの情報とSPARKSを確認できます。{% else %}ログインすると、注文履歴・プロフィール・配送先住所を確認できます。{% endif %}</p><a class="gira-my-gira-login" href="/customer_authentication/login?return_to=%2Fpages%2Fmy-gira">LOG IN / JOIN FREE</a><a class="gira-my-gira-benefits-link" href="/pages/gira-club">CLUB BENEFITS →</a>
     </div>
   </main>
 {% endif %}

@@ -81,6 +81,18 @@
     ]
   },
   {
+    "name": "GIRA Loyalty",
+    "settings": [
+      {
+        "type": "checkbox",
+        "id": "gira_sparks_enabled",
+        "label": "Show SPARKS (only after end-to-end validation)",
+        "default": false,
+        "info": "Keep off until earning, redemption and balance sync are live. Hides point balances and reward promises without deleting customer data."
+      }
+    ]
+  },
+  {
     "name": "Favicon",
     "settings": [
       {

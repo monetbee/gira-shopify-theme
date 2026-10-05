@@ -37,3 +37,6 @@
 .gira-product-detail-copy-grid { display:grid; grid-template-columns:1fr; gap:2rem; margin-top:3rem; padding-top:2.25rem; border-top:1px solid rgba(0,0,0,.08); }.gira-product-detail-copy { margin-top:1rem; color:rgba(0,0,0,.7); font-size:1rem; line-height:1.9; }.gira-product-detail-copy p { margin:0 0 1rem; }.gira-product-detail-list { margin:1rem 0 0; padding-left:1.1rem; color:rgba(0,0,0,.7); font-size:1rem; line-height:1.9; }.gira-product-detail-list li+li { margin-top:.5rem; }
 @media (min-width:1024px) { .gira-product-detail-shell { grid-template-columns:minmax(0,1.6fr) minmax(0,.9fr); }.gira-product-detail-copy-grid { grid-template-columns:1.2fr .8fr; } }
 @media (max-width:767px) { .gira-product-detail-container { padding-top:1.25rem; } }
+.gira-product-detail-gallery,.gira-product-detail-panel,.gira-product-detail-gallery-thumbs { min-width:0; }
+.gira-product-detail-gallery { grid-template-columns:minmax(0,1fr); }
+@media (max-width:1023px) { .gira-product-detail-shell { grid-template-columns:minmax(0,1fr); } }
