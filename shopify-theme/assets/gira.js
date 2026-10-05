@@ -473,6 +473,13 @@
         }),
       });
       if (!response.ok) {
+        if (response.status === 422) {
+          // Shopify may clamp a rejected quantity to available stock.
+          // Re-read only; never repeat the mutation.
+          await refreshCart({ openDrawer: wasDrawerOpen });
+          setCartError('Requested quantity is unavailable. Your bag shows the available quantity. / ご希望の数量を購入できません。カートの数量をご確認ください。');
+          return;
+        }
         throw new Error('Unable to update cart');
       }
       const cart = await response.json();

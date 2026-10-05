@@ -7,3 +7,13 @@
 .gira-cart-page-line__body { min-width:0; grid-template-columns:minmax(0,1fr) auto; }
 .gira-cart-page-line__body a,.gira-cart-line__body a { overflow-wrap:anywhere; }
 .gira-cart-page-line__bottom,.gira-cart-line__bottom { flex-wrap:wrap; gap:.5rem; }
+.gira-cart-drawer { overflow:hidden; }
+.gira-cart-drawer__header { height:auto; min-height:0; }
+.gira-collection__hero { height:auto; display:block; }
+@media(max-width:767px){.gira-header-cta{display:none}.gira-header__actions{flex-shrink:0}.gira-header__brand-area{min-width:0}}
+.gira-cart-button svg { color:#111; stroke:currentColor; }
+.gira-footer { display:block; }
+.gira-footer__grid > div { min-width:0; }
+.gira-footer__bottom .gira-container { flex-wrap:wrap; gap:.5rem; }
+.gira-cart-drawer__footer { grid-template-columns:minmax(0,1fr); justify-content:stretch; }
+[data-gira-checkout-form] { width:100%; }

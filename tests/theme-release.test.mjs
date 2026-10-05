@@ -100,6 +100,18 @@ test('network failure never repeats the cart mutation', async () => {
   assert.equal(h.control.disabled, false);
 });
 
+test('Shopify 422 stock rejection refreshes actual quantities without another write', async () => {
+  const h = harness({ fetchImpl: async (url, options) => options?.method === 'POST'
+    ? { ok: false, status: 422 }
+    : response(cart(1)) });
+  await h.fire('click', h.control);
+  assert.equal(h.calls.filter(({ options }) => options?.method === 'POST').length, 1);
+  assert.equal(h.bubble.textContent, '1');
+  assert.match(h.alert.textContent, /ご希望の数量/);
+  assert.equal(h.control.disabled, false);
+  assert.equal(h.drawer.classList.contains('is-open'), true);
+});
+
 test('successful quantity update clears old errors and updates count', async () => {
   const h = harness({ fetchImpl: async () => response(cart()) });
   h.alert.hidden = false;
