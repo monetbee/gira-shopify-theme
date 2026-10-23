@@ -80,6 +80,8 @@ export function createShopifyClient(env = process.env, {
   now = Date.now,
   timeoutMs = 10_000,
   onDiagnostic = () => {},
+  inspectIdentity,
+  onRequestStart = () => {},
 } = {}) {
   const { shopDomain, apiVersion, clientId, clientSecret } = readShopifyConfig(env);
   const expectedShopId = readExpectedShopId(env);
@@ -104,6 +106,7 @@ export function createShopifyClient(env = process.env, {
       rootObject: null,
     };
     try {
+      onRequestStart(stage);
       const response = await fetchImpl(url, { ...options, signal, redirect: 'error' });
       if (stage === 'graphql') {
         const requestId = response.headers.get('x-request-id');
@@ -137,6 +140,12 @@ export function createShopifyClient(env = process.env, {
       }
       if (stage === 'graphql') {
         context.shop = body?.data?.shop;
+        if (inspectIdentity && (body.errors === undefined || (Array.isArray(body.errors) && body.errors.length === 0))) {
+          await inspectIdentity(Object.freeze({
+            id: typeof context.shop?.id === 'string' ? context.shop.id : null,
+            myshopifyDomain: typeof context.shop?.myshopifyDomain === 'string' ? context.shop.myshopifyDomain : null,
+          }));
+        }
         emitIdentity('identity_parsed', context);
       }
       diagnostic.jsonParsed = true;

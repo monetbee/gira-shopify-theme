@@ -1,4 +1,88 @@
 (() => {
+  const initializeHero = (root) => {
+    const slides = [...root.querySelectorAll('[data-gira-hero-slide]')];
+    if (slides.length < 2) return () => {};
+
+    const indicators = [...root.querySelectorAll('[data-gira-hero-indicator]')];
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const interval = Math.max(3000, Number(root.dataset.interval) || 5000);
+    let currentIndex = 0;
+    let timer;
+    let pointerStart = null;
+
+    const setSlide = (nextIndex) => {
+      currentIndex = (nextIndex + slides.length) % slides.length;
+      slides.forEach((slide, index) => {
+        const isActive = index === currentIndex;
+        slide.classList.toggle('is-active', isActive);
+        const video = slide.querySelector('video');
+        if (!video) return;
+        if (!isActive || reducedMotion.matches) video.pause();
+        else video.play().catch(() => {});
+      });
+      indicators.forEach((indicator, index) => {
+        const isActive = index === currentIndex;
+        indicator.classList.toggle('is-active', isActive);
+        if (isActive) indicator.setAttribute('aria-current', 'true');
+        else indicator.removeAttribute('aria-current');
+      });
+    };
+    const stop = () => { window.clearInterval(timer); timer = undefined; };
+    const start = () => {
+      stop();
+      if (reducedMotion.matches) root.querySelectorAll('video').forEach((video) => video.pause());
+      else root.querySelector('[data-gira-hero-slide].is-active video')?.play().catch(() => {});
+      if (root.dataset.autoplay === 'true' && !reducedMotion.matches && !document.hidden
+        && !root.matches(':hover') && !root.contains(document.activeElement)) {
+        timer = window.setInterval(() => setSlide(currentIndex + 1), interval);
+      }
+    };
+
+    root.querySelector('[data-gira-hero-previous]')?.addEventListener('click', () => { setSlide(currentIndex - 1); start(); });
+    root.querySelector('[data-gira-hero-next]')?.addEventListener('click', () => { setSlide(currentIndex + 1); start(); });
+    indicators.forEach((indicator) => indicator.addEventListener('click', () => {
+      setSlide(Number(indicator.dataset.giraHeroIndicator));
+      start();
+    }));
+    root.addEventListener('pointerenter', stop);
+    root.addEventListener('pointerleave', start);
+    root.addEventListener('focusin', stop);
+    root.addEventListener('focusout', (event) => { if (!root.contains(event.relatedTarget)) start(); });
+    root.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'touch') pointerStart = event.clientX;
+    }, { passive: true });
+    root.addEventListener('pointerup', (event) => {
+      if (pointerStart === null) return;
+      const distance = event.clientX - pointerStart;
+      pointerStart = null;
+      if (Math.abs(distance) < 40) return;
+      setSlide(currentIndex + (distance < 0 ? 1 : -1));
+      start();
+    }, { passive: true });
+    root.addEventListener('pointercancel', () => { pointerStart = null; });
+    document.addEventListener('visibilitychange', start);
+    reducedMotion.addEventListener('change', start);
+    start();
+
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', start);
+      reducedMotion.removeEventListener('change', start);
+    };
+  };
+
+  const heroCleanups = new WeakMap();
+  document.querySelectorAll('[data-gira-hero]').forEach((root) => heroCleanups.set(root, initializeHero(root)));
+  document.addEventListener('shopify:section:load', (event) => {
+    const root = event.target.matches('[data-gira-hero]') ? event.target : event.target.querySelector('[data-gira-hero]');
+    if (root) heroCleanups.set(root, initializeHero(root));
+  });
+  document.addEventListener('shopify:section:unload', (event) => {
+    const root = event.target.matches('[data-gira-hero]') ? event.target : event.target.querySelector('[data-gira-hero]');
+    heroCleanups.get(root)?.();
+    heroCleanups.delete(root);
+  });
+
   document.addEventListener('click', (event) => {
     const toggle = event.target.closest('[data-gira-menu-toggle]');
     if (!toggle) return;

@@ -3,10 +3,55 @@
   if featured_collection == blank
     assign featured_collection = collections.all
   endif
+  assign slide_count = 0
+  for block in section.blocks
+    if block.settings.use_current_hero or block.settings.image != blank
+      assign slide_count = slide_count | plus: 1
+    endif
+  endfor
 %}
-<section class="gira-editorial-shell">
-  {% if section.settings.show_video %}<video class="gira-hero-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true"><source src="{{ 'gira-hero.mp4' | asset_url }}" type="video/mp4"></video>{% endif %}
+<section class="gira-editorial-shell" data-gira-hero data-autoplay="{{ section.settings.autoplay }}" data-interval="{{ section.settings.interval | times: 1000 }}"{% if slide_count > 1 %} aria-roledescription="carousel"{% endif %}>
+  {% if slide_count > 0 %}
+    <div class="gira-hero-slides" aria-hidden="true">
+      {% assign rendered_slide_index = 0 %}
+      {% for block in section.blocks %}
+        {% if block.settings.use_current_hero or block.settings.image != blank %}
+          {% assign rendered_slide_index = rendered_slide_index | plus: 1 %}
+          {% assign slide_loading = 'lazy' %}
+          {% assign slide_fetchpriority = 'auto' %}
+          {% if rendered_slide_index == 1 %}
+            {% assign slide_loading = 'eager' %}
+            {% assign slide_fetchpriority = 'high' %}
+          {% endif %}
+          <div class="gira-hero-slide{% if rendered_slide_index == 1 %} is-active{% endif %}" data-gira-hero-slide data-slide-index="{{ rendered_slide_index | minus: 1 }}" style="--hero-position-desktop: {{ block.settings.desktop_position }}; --hero-position-mobile: {{ block.settings.mobile_position }};" {{ block.shopify_attributes }}>
+            {% if block.settings.image != blank %}
+              {{ block.settings.image | image_url: width: 2400 | image_tag: class: 'gira-hero-slide__media', widths: '640, 960, 1280, 1600, 2000, 2400', sizes: '100vw', loading: slide_loading, fetchpriority: slide_fetchpriority, alt: block.settings.image.alt }}
+            {% else %}
+              <img class="gira-hero-slide__media" src="https://cdn.shopify.com/s/files/1/0736/6803/4643/files/2AFD2E8F-6A6F-4CC4-9E79-927247A0CAC6.jpg" width="1122" height="1402" alt="GIRA eyewear campaign at night" loading="eager" fetchpriority="high" />
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% elsif section.settings.show_video %}
+    <video class="gira-hero-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true"><source src="{{ 'gira-hero.mp4' | asset_url }}" type="video/mp4"></video>
+  {% endif %}
   <div class="gira-hero-overlay" aria-hidden="true"></div>
+  {% if slide_count > 1 %}
+    <div class="gira-hero-controls" aria-label="Hero slides">
+      <button class="gira-hero-arrow gira-hero-arrow--previous" type="button" data-gira-hero-previous aria-label="Previous slide"><span aria-hidden="true">&#8592;</span></button>
+      <div class="gira-hero-indicators" role="group" aria-label="Choose a slide">
+        {% assign indicator_index = 0 %}
+        {% for block in section.blocks %}
+          {% if block.settings.use_current_hero or block.settings.image != blank %}
+            <button class="gira-hero-indicator{% if indicator_index == 0 %} is-active{% endif %}" type="button" data-gira-hero-indicator="{{ indicator_index }}" aria-label="Go to slide {{ indicator_index | plus: 1 }}"{% if indicator_index == 0 %} aria-current="true"{% endif %}></button>
+            {% assign indicator_index = indicator_index | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+      </div>
+      <button class="gira-hero-arrow gira-hero-arrow--next" type="button" data-gira-hero-next aria-label="Next slide"><span aria-hidden="true">&#8594;</span></button>
+    </div>
+  {% endif %}
   <div class="gira-best-sellers gira-container">
     <div class="gira-storefront-brand"><p class="gira-kicker">{{ section.settings.eyebrow }}</p><h1 class="gira-brand-wordmark">{{ section.settings.title }}</h1><p>{{ section.settings.subtitle }}</p></div>
     <h2>BEST SELLERS</h2>
@@ -15,5 +60,5 @@
   </div>
 </section>
 {% schema %}
-{"name":"GIRA hero + best sellers","settings":[{"type":"checkbox","id":"show_video","label":"Show GIRA background video","default":true},{"type":"text","id":"eyebrow","label":"Eyebrow","default":"GIRA"},{"type":"text","id":"title","label":"Title","default":"GIRA"},{"type":"text","id":"subtitle","label":"Subtitle","default":"GO INSANE. REJECT AVERAGE."},{"type":"collection","id":"collection","label":"Best sellers collection"},{"type":"range","id":"products_to_show","min":2,"max":8,"step":1,"label":"Products to show","default":4},{"type":"text","id":"button_label","label":"Button label","default":"SHOP ALL"},{"type":"url","id":"button_link","label":"Button link"}],"presets":[{"name":"GIRA hero + best sellers"}]}
+{"name":"GIRA hero + best sellers","settings":[{"type":"checkbox","id":"autoplay","label":"Auto-advance slides","default":true},{"type":"range","id":"interval","min":3,"max":12,"step":1,"unit":"s","label":"Slide interval","default":5},{"type":"text","id":"eyebrow","label":"Eyebrow","default":"GIRA"},{"type":"text","id":"title","label":"Title","default":"GIRA"},{"type":"text","id":"subtitle","label":"Subtitle","default":"GO INSANE. REJECT AVERAGE."},{"type":"collection","id":"collection","label":"Best sellers collection"},{"type":"range","id":"products_to_show","min":2,"max":8,"step":1,"label":"Products to show","default":4},{"type":"text","id":"button_label","label":"Button label","default":"SHOP ALL"},{"type":"url","id":"button_link","label":"Button link"}],"blocks":[{"type":"slide","name":"Slide","settings":[{"type":"checkbox","id":"use_current_hero","label":"Keep the currently published Hero image when no image is selected","default":false},{"type":"image_picker","id":"image","label":"Image"},{"type":"select","id":"desktop_position","label":"Desktop image position","default":"50% 12%","options":[{"value":"50% 12%","label":"Center high"},{"value":"50% 35%","label":"Center upper"},{"value":"50% 50%","label":"Center"},{"value":"50% 65%","label":"Center low"},{"value":"35% 50%","label":"Left"},{"value":"65% 50%","label":"Right"}]},{"type":"select","id":"mobile_position","label":"Mobile image position","default":"55% 10%","options":[{"value":"55% 10%","label":"Center upper"},{"value":"50% 35%","label":"Center high"},{"value":"50% 50%","label":"Center"},{"value":"50% 65%","label":"Center low"},{"value":"35% 50%","label":"Left"},{"value":"65% 50%","label":"Right"}]}]}],"max_blocks":3,"presets":[{"name":"GIRA hero + best sellers","blocks":[{"type":"slide","settings":{"use_current_hero":true}},{"type":"slide"},{"type":"slide"}]}]}
 {% endschema %}

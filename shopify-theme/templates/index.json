@@ -26,10 +26,30 @@
         "subtitle": "GO INSANE. REJECT AVERAGE.",
         "collection": "",
         "products_to_show": 4,
-        "show_video": true,
         "button_label": "SHOP ALL",
         "button_link": "/collections/all"
-      }
+      },
+      "blocks": {
+        "hero_current_image": {
+          "type": "slide",
+          "settings": {
+            "use_current_hero": true
+          }
+        },
+        "hero_rain_image": {
+          "type": "slide",
+          "settings": {
+            "media_type": "image"
+          }
+        },
+        "hero_neon_image": {
+          "type": "slide",
+          "settings": {
+            "media_type": "image"
+          }
+        }
+      },
+      "block_order": ["hero_current_image", "hero_rain_image", "hero_neon_image"]
     },
     "signal": {
       "type": "gira-signal-products",

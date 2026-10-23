@@ -50,6 +50,88 @@ block child processes, use `node --test --test-isolation=none` to run the tests.
 
 ## Shopify configuration and manual connection check
 
+### Local administrator-only temporary identity viewer
+
+The separate `shopify:inspect-local` command displays only `data.shop.id` and
+`data.shop.myshopifyDomain`, copied immediately after GraphQL JSON parsing.
+It does not change `shopify:check`. Use a local interactive terminal with terminal
+recording disabled, never Render Shell, CI or an automated agent's captured console.
+Render/CI environment markers (even `CI=false`), redirected standard streams,
+missing flags and missing typed consent refuse execution before API requests.
+These are accidental-execution guards, not an authentication boundary against
+someone who controls the process environment. Do not remove markers to bypass them.
+
+Set the existing five server variables securely on your local machine:
+`SHOPIFY_SHOP_DOMAIN=giragiraglasses.myshopify.com`, `SHOPIFY_API_VERSION=2026-07`,
+`SHOPIFY_EXPECTED_SHOP_ID=gid://shopify/Shop/7368034643`, plus the app's
+`SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`. Never put secrets in command
+arguments. Variables are not automatically loaded from `.env`.
+
+From `gira-loyalty/`, explicitly run:
+
+```sh
+npm run shopify:inspect-local -- --view-identity --confirm-shop giragiraglasses.myshopify.com
+```
+
+On Windows use `npm.cmd` if needed. For a securely prepared, ignored local `.env`:
+
+```sh
+node --env-file=.env scripts/shopify-inspect-local.js --view-identity --confirm-shop giragiraglasses.myshopify.com
+```
+
+If no VIEW prompt appears, do not type VIEW at the PowerShell prompt. The command
+now prints a fixed refusal/setup error code and `Exit code: 1` after restoring the
+screen. In PowerShell inspect `$LASTEXITCODE` immediately after the command.
+`INTERACTIVE_TERMINAL_REQUIRED` includes only the three TTY boolean flags; use a
+normal interactive Windows Terminal/PowerShell without redirection.
+`HOSTED_OR_CI_REFUSED` means a hosting/CI marker was detected; do not bypass it.
+`FLAGS_OR_SHOP_CONFIRMATION_INVALID` means flags/domain confirmation are missing
+or inconsistent. Configuration codes such as `MISSING_OR_INVALID_CREDENTIALS`,
+`INVALID_SHOP_DOMAIN`, or `MISSING_EXPECTED_SHOP_ID` require local configuration.
+The npm command does not load `.env`; use the explicit `--env-file` command above
+when appropriate. `TERMINAL_OPEN_FAILED` means the controlling console/raw input
+could not be opened. Exception text and secret values are never printed.
+Only fixed local failure reasons go to stderr; viewed identity values remain
+confined to the temporary screen. Cancellation restores input mode and pauses
+stdin so the process can exit cleanly.
+
+After VIEW, the failure screen now includes a fixed `Reason`, `API attempted`
+(the fetch function was entered, not proof Shopify received it), and `Identity
+view completed` (the viewer returned after Enter). Examples:
+
+- `CLIENT_SETUP_FAILED`: failed before a request started.
+- `AUTH_AUTHENTICATION_FAILED`, `AUTH_NETWORK_ERROR`: token endpoint failure.
+- `GRAPHQL_GRAPHQL_ERROR`, `GRAPHQL_INVALID_RESPONSE`: GraphQL error or invalid JSON.
+- `IDENTITY_DISPLAY_FORMAT_REJECTED`: the two selected fields were not safe to display.
+- `IDENTITY_VIEW_CANCELLED_OR_FAILED`: the temporary viewer failed or was cancelled.
+- `IDENTITY_SHOP_DOMAIN_MISMATCH`, `IDENTITY_SHOP_ID_MISMATCH`: viewing completed,
+  but the unchanged exact identity checks rejected the response.
+
+Only fixed codes go to the normal error summary. No raw exceptions or identity
+values are added. A validly formatted but unapproved ID/domain is displayed before
+validation, then still rejected. GraphQL errors skip the viewer and retain their
+GraphQL failure classification. Split Windows CRLF input cannot automatically
+dismiss the next screen.
+
+Type `VIEW` and Enter within 60 seconds (input is visible; do not paste credentials). Only then does the
+command acquire a token and run the existing fixed query. The two selected fields
+appear on an alternate terminal screen through the controlling terminal device,
+not stdout/stderr or a file. Press Enter to clear them and continue exact identity
+validation. Ctrl-C or a 60-second timeout cancels and returns exit code 1.
+Only bounded Shop GIDs and canonical myshopify domain strings can be displayed;
+unexpected/control-character payloads are suppressed rather than printed.
+The expected ID/domain are never changed based on what is displayed.
+
+Confirm the displayed ID matches your independently verified Shop GID and the
+domain is one of the two approved domains. A final temporary screen reports pass
+or failure; Enter closes it (automatic close after 10 seconds). Exit code 0 means
+the existing validation passed; 1 means failure, refusal or cancellation. Viewing
+a value is not a successful verification. The existing 401 retry remains in place.
+No response, result or credential is saved to files or normal logs. Terminal
+recorders, OS memory and forced termination cannot be securely erased by this
+tool; use a trusted administrator terminal. Real API use needs separate approval
+for the current rollout.
+
 Set these variables only on the server (Render's GIRA Loyalty service):
 
 | Variable | Value |
