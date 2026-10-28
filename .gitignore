@@ -47,3 +47,5 @@ next-env.d.ts
 .env*
 
 scripts/tmp-img/
+logs/
+shopify-theme/assets/hero-slide-*

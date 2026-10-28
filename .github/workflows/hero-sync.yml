@@ -1,0 +1,29 @@
+name: Sync Hero slideshow images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'shopify-theme/assets/slideshow/**'
+      - 'scripts/hero-sync.mjs'
+  workflow_dispatch:
+
+concurrency:
+  group: hero-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g @shopify/cli@latest
+      - run: node scripts/hero-sync.mjs
+        env:
+          SHOPIFY_CLI_THEME_TOKEN: ${{ secrets.SHOPIFY_CLI_THEME_TOKEN }}
+          SHOPIFY_STORE: ${{ vars.SHOPIFY_STORE || 'giragiraglasses.myshopify.com' }}
+          HERO_THEME_ID: ${{ vars.HERO_THEME_ID || '167141834835' }}
+

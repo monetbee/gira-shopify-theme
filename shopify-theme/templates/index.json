@@ -25,33 +25,10 @@
         ".gira-storefront-brand{min-height:300px;text-align:left}",
         "@media(max-width:767px){.gira-brand-wordmark{font-size:36px}}"
       ],
-      "blocks": {
-        "hero_current_image": {
-          "type": "slide",
-          "settings": {
-            "use_current_hero": true,
-            "desktop_position": "50% 12%",
-            "mobile_position": "55% 10%"
-          }
-        },
-        "hero_rain_image": {
-          "type": "slide",
-          "settings": {}
-        },
-        "hero_neon_image": {
-          "type": "slide",
-          "settings": {}
-        }
-      },
-      "block_order": [
-        "hero_current_image",
-        "hero_rain_image",
-        "hero_neon_image"
-      ],
       "settings": {
-        "show_video": false,
         "autoplay": true,
         "interval": 5,
+        "transition_duration": 0.8,
         "eyebrow": "GIRA",
         "title": "GIRA",
         "subtitle": "GO INSANE. REJECT AVERAGE.",
